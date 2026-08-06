@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThunAI – AI that listens and cares</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* ═══════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════ */
+:root{
+  --primary:#5E9E84;
+  --primary-light:#7FAE98;
+  --primary-pale:#EDF4EF;
+  --secondary:#A9C7B7;
+  --accent:#C6D9C8;
+  --bg:#F0EEE8;
+  --card:#FFFFFF;
+  --border:#E0DDD6;
+  --text:#2C3E35;
+  --text-mid:#5A706A;
+  --text-muted:#8FA49E;
+  --mood-hl:#F4E8B2;
+  --user-bubble:#4A8A6F;
+  --ai-bubble:#FFFFFF;
+  --shadow:0 2px 16px rgba(44,62,53,.07);
+  --shadow-md:0 6px 28px rgba(44,62,53,.11);
+  --r:18px;
+  --r-sm:12px;
+  --r-xs:8px;
+  --sidebar:272px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--accent);border-radius:99px}
+
+/* ═══════════════════════════════════════════
+   LEFT SIDEBAR
+═══════════════════════════════════════════ */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--card);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  padding:28px 20px 0;
+  height:100vh;overflow-y:auto;
+  position:relative;z-index:10;
+}
+
+/* logo */
+.logo{display:flex;align-items:center;gap:11px;margin-bottom:32px;padding:0 4px}
+.logo-mark{
+  width:42px;height:42px;border-radius:14px;
+  background:linear-gradient(140deg,var(--primary) 0%,#4a7a64 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;box-shadow:0 4px 12px rgba(94,158,132,.35);
+  overflow:hidden;
+}
+.logo-mark-img{width:100%;height:100%;object-fit:cover;display:block}
+.logo-copy h1{font-size:18px;font-weight:600;color:var(--text);letter-spacing:-.3px;line-height:1.1}
+.logo-copy span{font-size:11px;color:var(--text-muted)}
+
+/* nav */
+.nav-item{
+  display:flex;align-items:center;gap:13px;
+  padding:12px 16px;border-radius:var(--r-sm);
+  cursor:pointer;font-size:14px;font-weight:500;
+  color:var(--text-mid);margin-bottom:2px;
+  transition:all .2s ease;position:relative;
+}
+.nav-item svg{width:20px;height:20px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-item:hover{background:var(--primary-pale);color:var(--primary)}
+.nav-item.active{background:var(--primary);color:#fff;font-weight:600;box-shadow:0 4px 14px rgba(94,158,132,.3)}
+.nav-item.active svg{stroke:#fff}
+.nav-badge{margin-left:auto;background:rgba(255,255,255,.3);color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:2px 7px;line-height:1.4}
+.nav-item:not(.active) .nav-badge{background:var(--primary);color:#fff}
+
+/* sidebar illustration + quote — single unified card */
+.sidebar-card{
+  margin-top:auto;margin-bottom:20px;
+  background:var(--card);border-radius:var(--r);
+  overflow:hidden;position:relative;
+  box-shadow:var(--shadow);
+  display:flex;flex-direction:column;
+}
+.sidebar-illus{
+  background:linear-gradient(160deg,#e8f0eb 0%,#ddeae2 100%);
+  padding:20px 20px 18px;overflow:hidden;position:relative;min-height:170px;
+  display:flex;align-items:center;justify-content:center;
+}
+.illus-figure{font-size:90px;line-height:1;text-align:center;filter:drop-shadow(0 4px 12px rgba(0,0,0,.08))}
+.illus-leaves{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;pointer-events:none}
+.leaf{font-size:36px;opacity:.5}
+.sidebar-quote{
+  background:var(--card);padding:16px 20px;
+  border-top:1px solid var(--border);
+}
+.sidebar-quote p{font-size:12.5px;color:var(--text-mid);line-height:1.6;font-style:italic}
+.sidebar-quote p::before{content:'\275D\00A0';font-size:16px;color:var(--primary);font-style:normal}
+.sidebar-quote .heart{color:#e88a8a;font-size:14px;margin-top:8px}
+
+/* ═══════════════════════════════════════════
+   CONTENT AREA
+═══════════════════════════════════════════ */
+.content-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;min-width:0}
+
+/* top bar */
+.topbar{
+  padding:22px 28px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  background:var(--card);flex-shrink:0;
+}
+.topbar-left h2{font-family:'Playfair Display',serif;font-size:22px;color:var(--text);margin-bottom:2px}
+.topbar-left p{font-size:13px;color:var(--text-muted)}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.daily-tip-pill{
+  display:flex;align-items:center;gap:7px;
+  background:var(--mood-hl);border-radius:99px;
+  padding:8px 16px;font-size:13px;font-weight:500;color:#7a5c10;cursor:pointer;
+  border:1px solid #e8d87a55;transition:all .2s;
+}
+.daily-tip-pill:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(244,232,178,.5)}
+.avatar-btn{
+  width:38px;height:38px;border-radius:50%;background:var(--primary-pale);
+  border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:20px;transition:all .2s;overflow:hidden;
+}
+.avatar-btn:hover{border-color:var(--primary)}
+.topbar-avatar-img{width:100%;height:100%;object-fit:cover;display:block}
+.topbar-username{font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
+
+/* generic disabled state for a Settings sub-section (FEATURE 5) */
+.settings-disabled{opacity:.45;pointer-events:none}
+
+/* pages container */
+.pages{flex:1;overflow:hidden;display:flex;min-height:0}
+.page{display:none;flex:1;overflow-y:auto;overflow-x:hidden;padding:24px 28px 40px;animation:fadeUp .3s ease both;min-height:0;height:100%;-webkit-overflow-scrolling:touch}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* chat page special */
+.chat-page{display:none;flex:1;overflow:hidden;flex-direction:column}
+.chat-page.active{display:flex}
+
+/* ─── shared ─── */
+.section-head{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--border);padding:22px}
+.card:hover{box-shadow:var(--shadow-md)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:var(--r-sm);padding:10px 20px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(94,158,132,.3)}
+.btn-primary:hover{background:#4a7a64;transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+.btn-outline:hover{background:var(--primary-pale)}
+.btn-soft{background:var(--primary-pale);color:var(--primary)}
+.btn-soft:hover{background:var(--accent)}
+.pill{display:inline-flex;align-items:center;gap:5px;background:var(--primary-pale);color:var(--primary);border-radius:99px;padding:4px 12px;font-size:11px;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.mt12{margin-top:12px}.mt16{margin-top:16px}.mt20{margin-top:20px}.mt24{margin-top:24px}
+.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}
+
+/* ═══════════════════════════════════════════
+   HOME
+═══════════════════════════════════════════ */
+.home-hero{
+  background:linear-gradient(120deg,#e8f2ec 0%,#f3f8f5 50%,#fdf9ee 100%);
+  border-radius:var(--r);padding:26px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  border:1px solid var(--border);margin-bottom:20px;
+}
+.home-hero h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--text);margin-bottom:4px}
+.home-hero p{font-size:13px;color:var(--text-muted)}
+.hero-icon{font-size:52px}
+
+.mood-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px}
+.mood-chip{
+  background:var(--card);border:2px solid var(--border);border-radius:14px;
+  padding:14px 6px;text-align:center;cursor:pointer;transition:all .2s;
+}
+.mood-chip:hover{border-color:var(--primary-light);transform:translateY(-2px);box-shadow:var(--shadow)}
+.mood-chip.sel{border-color:var(--primary);background:var(--primary-pale)}
+.mood-chip .me{font-size:26px;margin-bottom:5px}
+.mood-chip .ml{font-size:11px;font-weight:500;color:var(--text-muted)}
+
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border-radius:var(--r-sm);padding:18px;border:1px solid var(--border)}
+.stat-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:7px}
+.stat-val{font-size:20px;font-weight:600;color:var(--text)}
+.stat-sub{font-size:11px;color:var(--primary);margin-top:3px}
+
+.qa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.qa-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:18px 12px;text-align:center;cursor:pointer;transition:all .2s;
+}
+.qa-card:hover{background:var(--primary);border-color:var(--primary);transform:translateY(-2px);box-shadow:var(--shadow)}
+.qa-card:hover .qa-lbl{color:#fff}
+.qa-icon{font-size:26px;margin-bottom:8px}
+.qa-lbl{font-size:12px;font-weight:500;color:var(--text-mid);transition:color .2s}
+
+/* ═══════════════════════════════════════════
+   CHAT
+═══════════════════════════════════════════ */
+.chat-messages{
+  flex:1;overflow-y:auto;
+  padding:24px 28px;
+  background:var(--bg);
+  display:flex;flex-direction:column;gap:20px;
+}
+
+/* message rows */
+.mrow{display:flex;gap:12px;align-items:flex-end;max-width:72%;animation:fadeUp .25s ease}
+.mrow.ai{align-self:flex-start}
+.mrow.user{align-self:flex-end;flex-direction:row-reverse}
+
+.mavatar{
+  width:36px;height:36px;border-radius:12px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  background:linear-gradient(140deg,var(--primary),#4a7a64);
+  box-shadow:0 3px 10px rgba(94,158,132,.3);
+  overflow:hidden;
+}
+.mavatar-img{width:100%;height:100%;object-fit:cover;display:block}
+
+.mbubble{
+  padding:14px 18px;border-radius:18px 18px 18px 4px;
+  background:var(--card);border:1px solid var(--border);
+  font-size:14px;line-height:1.65;color:var(--text);
+  box-shadow:var(--shadow);
+}
+.chat-action-btn{
+  display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;margin-top:8px;
+  border:none;border-radius:999px;background:var(--primary);color:#fff;cursor:pointer;
+  font-size:13px;font-weight:600;transition:transform .15s ease,background .15s ease;
+}
+.chat-action-btn:hover{background:#4a7a64;transform:translateY(-1px);}
+.mrow.user .mbubble{
+  background:var(--user-bubble);color:#fff;
+  border-color:transparent;border-radius:18px 18px 4px 18px;
+  box-shadow:0 3px 14px rgba(74,138,111,.3);
+}
+.mtime{font-size:10px;color:var(--text-muted);margin-top:5px;display:flex;align-items:center;gap:4px}
+.mrow.user .mtime{justify-content:flex-end;color:rgba(255,255,255,.6)}
+.mrow.user .mbody{display:flex;flex-direction:column;align-items:flex-end}
+.tick{font-size:11px;color:rgba(255,255,255,.6)}
+
+/* typing */
+.typing-row{display:flex;gap:12px;align-items:flex-end;align-self:flex-start}
+.typing-bubble{
+  background:var(--card);border:1px solid var(--border);border-radius:18px 18px 18px 4px;
+  padding:14px 18px;display:flex;gap:5px;align-items:center;box-shadow:var(--shadow);
+}
+.tdot{width:7px;height:7px;border-radius:50%;background:var(--text-muted);animation:tdot .9s infinite ease}
+.tdot:nth-child(2){animation-delay:.15s}
+.tdot:nth-child(3){animation-delay:.3s}
+@keyframes tdot{0%,80%,100%{transform:scale(.8);opacity:.5}40%{transform:scale(1);opacity:1}}
+
+/* suggestion chips */
+.suggestions{
+  padding:14px 28px;background:var(--card);
+  border-top:1px solid var(--border);
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex-shrink:0;
+}
+.sug-chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg);border:1.5px solid var(--border);border-radius:99px;
+  padding:8px 16px;font-size:12.5px;font-weight:500;color:var(--text-mid);
+  cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.sug-chip:hover{background:var(--primary-pale);border-color:var(--primary-light);color:var(--primary)}
+.sug-chip .sc{font-size:14px}
+
+/* input area */
+.chat-input-area{
+  padding:16px 28px 20px;
+  background:var(--card);border-top:1px solid var(--border);flex-shrink:0;
+}
+.emotion-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;color:var(--text-muted)}
+.e-pill{background:var(--primary-pale);color:var(--primary);border-radius:99px;padding:3px 11px;font-size:11px;font-weight:600}
+.input-row{display:flex;gap:10px;align-items:flex-end}
+.chat-tf{
+  flex:1;border:1.5px solid var(--border);border-radius:14px;
+  padding:13px 18px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);
+  background:var(--bg);outline:none;resize:none;min-height:50px;max-height:120px;
+  transition:border-color .2s;line-height:1.5;
+}
+.chat-tf:focus{border-color:var(--primary);background:#fff}
+.chat-tf::placeholder{color:var(--text-muted)}
+.ico-btn{
+  width:46px;height:46px;border-radius:var(--r-sm);border:1.5px solid var(--border);
+  background:var(--bg);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;
+}
+.ico-btn:hover{border-color:var(--primary);background:var(--primary-pale)}
+.send-btn{
+  width:46px;height:46px;border-radius:var(--r-sm);border:none;
+  background:var(--primary);cursor:pointer;color:#fff;font-size:18px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  box-shadow:0 3px 12px rgba(94,158,132,.35);transition:all .2s;
+}
+.send-btn:hover{background:#4a7a64;transform:scale(1.06)}
+.send-btn svg{width:20px;height:20px;fill:#fff}
+
+/* ═══════════════════════════════════════════
+   MOOD TRACKER
+═══════════════════════════════════════════ */
+.mood-log-card{padding:22px}
+.mood-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.mood-mini{
+  border:2px solid var(--border);border-radius:12px;padding:12px 6px;
+  text-align:center;cursor:pointer;transition:all .18s;
+}
+.mood-mini:hover{border-color:var(--primary-light);transform:translateY(-1px)}
+.mood-mini.sel{border-color:var(--primary);background:var(--primary-pale)}
+.mood-mini .mme{font-size:22px;margin-bottom:4px}
+.mood-mini .mml{font-size:11px;color:var(--text-muted);font-weight:500}
+
+.range-row{display:flex;align-items:center;gap:12px;margin:12px 0}
+.range-lbl{font-size:12px;color:var(--text-muted);min-width:68px}
+input[type=range].slider{
+  flex:1;appearance:none;-webkit-appearance:none;height:5px;border-radius:99px;
+  background:linear-gradient(90deg,var(--primary) 60%,var(--border) 60%);outline:none;cursor:pointer;
+}
+input[type=range].slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--primary);box-shadow:0 2px 6px rgba(94,158,132,.4)}
+.note-tf{
+  width:100%;border:1.5px solid var(--border);border-radius:12px;
+  padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);
+  background:var(--bg);outline:none;resize:none;height:80px;
+}
+.note-tf:focus{border-color:var(--primary);background:#fff}
+
+.mstat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.mstat{background:var(--card);border-radius:var(--r-sm);padding:16px;border:1px solid var(--border);text-align:center}
+.mstat-lbl{font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.mstat-val{font-size:19px;font-weight:700;color:var(--text)}
+.mstat-sub{font-size:11px;color:var(--primary);margin-top:2px}
+.chart-box{width:100%;height:190px;position:relative}
+
+/* ═══════════════════════════════════════════
+   JOURNAL
+═══════════════════════════════════════════ */
+.j-toolbar{display:flex;gap:8px;margin-bottom:14px}
+.j-btn{
+  padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);
+  background:var(--card);font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:all .2s;
+}
+.j-btn:hover,.j-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.journal-textarea{
+  width:100%;min-height:220px;
+  border:1.5px solid var(--border);border-radius:14px;
+  padding:16px 20px;font-family:'Playfair Display',serif;font-size:16px;
+  line-height:2;color:var(--text);background:var(--card);outline:none;resize:none;
+  background-image:repeating-linear-gradient(transparent,transparent 31px,#f0ede7 31px,#f0ede7 32px);
+  background-attachment:local;background-position:0 16px;
+}
+.journal-textarea:focus{border-color:var(--primary)}
+.ai-reflect{
+  background:linear-gradient(120deg,var(--primary-pale),#f6fbf8);
+  border-radius:var(--r-sm);padding:16px 18px;margin-top:14px;
+  border-left:3px solid var(--primary);
+}
+.ai-reflect-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--primary);margin-bottom:7px}
+.ai-reflect p{font-size:13px;color:var(--text-mid);line-height:1.7}
+.j-entry{
+  display:flex;gap:14px;align-items:flex-start;
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:15px 18px;margin-bottom:10px;cursor:pointer;transition:all .2s;
+}
+.j-entry:hover{border-color:var(--primary-light);transform:translateX(3px)}
+.j-date{background:var(--accent);border-radius:10px;padding:7px 10px;text-align:center;flex-shrink:0;min-width:44px}
+.j-day{font-size:18px;font-weight:700;color:var(--text);line-height:1}
+.j-mon{font-size:10px;color:var(--text-muted);text-transform:uppercase}
+.j-body h4{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.j-body p{font-size:12px;color:var(--text-muted);line-height:1.5}
+
+/* journal v2: reflection beside textarea */
+.journal-body-row{display:flex;gap:16px;align-items:stretch}
+.journal-body-row .journal-textarea{flex:1.5;min-height:260px}
+.ai-reflect-side{
+  flex:1;margin-top:0;min-width:220px;max-width:280px;
+  display:flex;flex-direction:column;
+}
+.ai-reflect-side p{flex:1}
+
+/* mood log as full-width rectangle under the journal box */
+.mood-log-rect-body{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.mood-mini-grid-row{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:8px;
+  flex:1.4;min-width:320px;margin-bottom:0;
+}
+.mood-log-rect-side{flex:1;min-width:260px;display:flex;flex-direction:column}
+.mood-log-rect-side .note-tf{height:60px}
+
+/* recent entries: 2 down, 2 across */
+.j-entries-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.j-entries-grid .j-entry{margin-bottom:0}
+
+@media(max-width:820px){
+  .journal-body-row{flex-direction:column}
+  .ai-reflect-side{max-width:none}
+  .mood-log-rect-body{flex-direction:column}
+  .j-entries-grid{grid-template-columns:1fr}
+  #page-settings > div{grid-template-columns:1fr 1fr !important}
+}
+
+@media(max-width:600px){
+  #page-settings > div{grid-template-columns:1fr !important}
+}
+
+/* ═══════════════════════════════════════════
+   SELF CARE
+═══════════════════════════════════════════ */
+.care-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.care-card{
+  background:var(--card);border-radius:var(--r);padding:22px;
+  border:1px solid var(--border);transition:all .22s;display:flex;flex-direction:column;gap:10px;
+}
+.care-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.care-ic{font-size:32px}
+.care-card h3{font-size:15px;font-weight:600;color:var(--text)}
+.care-card p{font-size:13px;color:var(--text-muted);line-height:1.55;flex:1}
+.care-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)}
+.dur{background:var(--primary-pale);color:var(--primary);border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600}
+.prog{height:4px;background:var(--border);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary),var(--secondary))}
+.start-btn{background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.start-btn:hover{background:#4a7a64}
+
+/* self-care v3: launcher grid + expandable full views */
+.care-launcher-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.care-panel-wide{grid-column:1 / -1}
+
+.care-launch-card{
+  background:var(--card);border-radius:var(--r);border:1px solid var(--border);
+  padding:30px 26px;cursor:pointer;transition:all .22s;text-align:center;
+  display:flex;flex-direction:column;align-items:center;
+}
+.care-launch-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--primary-light)}
+.care-launch-ic{font-size:40px;margin-bottom:12px}
+.care-launch-card h3{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px}
+.care-launch-card p{font-size:12.5px;color:var(--text-muted);line-height:1.55;margin-bottom:14px}
+.care-launch-cta{font-size:12.5px;font-weight:600;color:var(--primary)}
+
+/* full-view expand — fills the self-care section only */
+.care-fullview{
+  display:none;
+  min-height:calc(100vh - 170px);
+  flex-direction:column;
+  animation:fadeUp .3s ease both;
+}
+.care-fullview.active{display:flex}
+.care-back-btn{
+  align-self:flex-start;background:var(--primary-pale);color:var(--primary);
+  border:none;border-radius:99px;padding:9px 18px;font-size:12.5px;font-weight:600;
+  cursor:pointer;margin-bottom:18px;transition:all .2s;
+}
+.care-back-btn:hover{background:var(--accent)}
+.care-fullview-inner{
+  flex:1;background:var(--card);border-radius:var(--r);border:1px solid var(--border);
+  padding:40px 30px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:22px;width:100%;max-width:480px;margin:0 auto;
+}
+.care-fullview-inner .care-panel-head{justify-content:center;margin-bottom:0}
+.care-fullview-inner .care-panel-sub{max-width:420px;margin-left:auto;margin-right:auto;margin-bottom:0}
+.breath-stage.breath-stage-lg{width:280px;height:280px}
+.med-ring-wrap.med-ring-wrap-lg{width:220px;height:220px}
+
+.care-panel{
+  background:var(--card);border-radius:var(--r);border:1px solid var(--border);
+  padding:26px;display:flex;flex-direction:column;align-items:center;text-align:center;
+  transition:box-shadow .22s;
+}
+.care-panel:hover{box-shadow:var(--shadow-md)}
+.care-panel-head{width:100%;display:flex;align-items:center;gap:10px;margin-bottom:6px;text-align:left}
+.care-panel-head .cp-ic{font-size:22px}
+.care-panel-head h3{font-size:15px;font-weight:600;color:var(--text)}
+.care-panel-sub{font-size:12px;color:var(--text-muted);width:100%;text-align:left;margin-bottom:18px}
+
+/* breathing orb (big) — filled calming orb */
+.breath-stage{
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto;position:relative;
+}
+.breath-orb{
+  position:absolute;top:50%;left:50%;
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle at 32% 28%, rgba(190,222,206,.95) 0%, rgba(94,158,132,.8) 48%, rgba(74,122,100,.55) 100%);
+  box-shadow:0 0 50px rgba(94,158,132,.4), 0 0 90px rgba(94,158,132,.18), inset 0 0 26px rgba(255,255,255,.35);
+  opacity:.92;
+  transform:translate(-50%,-50%) scale(1);
+  transition:transform .6s ease;
+  will-change:transform;
+}
+.breath-stage.inhale .breath-orb,
+.breath-stage.hold .breath-orb,
+.breath-stage.exhale .breath-orb{
+  animation:breathGlowPulse 3s ease-in-out infinite alternate;
+}
+@keyframes breathGlowPulse{
+  0%{box-shadow:0 0 50px rgba(94,158,132,.4), 0 0 90px rgba(94,158,132,.18), inset 0 0 26px rgba(255,255,255,.35)}
+  100%{box-shadow:0 0 68px rgba(94,158,132,.55), 0 0 115px rgba(94,158,132,.3), inset 0 0 34px rgba(255,255,255,.45)}
+}
+.breath-txt{position:relative;z-index:1;color:var(--primary);font-family:'DM Sans',sans-serif;text-align:center}
+.breath-txt .bt-main{font-size:17px;font-weight:600;letter-spacing:.02em;color:var(--text)}
+.breath-txt .bt-count{font-size:13px;font-weight:600;color:var(--text-muted);margin-top:4px}
+.breath-controls{display:flex;gap:10px;width:100%;justify-content:center}
+.breath-controls .btn{flex:1;max-width:140px}
+.breath-cycles{font-size:12px;color:var(--text-muted);margin:0}
+
+/* meditation player */
+.med-dur-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%}
+.med-dur-chip{
+  border:1.5px solid var(--border);border-radius:99px;padding:8px 15px;
+  font-size:12.5px;font-weight:500;color:var(--text-mid);cursor:pointer;transition:all .2s;background:var(--card);
+}
+.med-dur-chip:hover{border-color:var(--primary-light);color:var(--primary)}
+.med-dur-chip.sel{background:var(--primary);border-color:var(--primary);color:#fff}
+.med-custom-inp{width:64px;border:1.5px solid var(--border);border-radius:99px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:12.5px;color:var(--text);background:var(--card);outline:none;text-align:center}
+.med-custom-inp:focus{border-color:var(--primary)}
+.med-ring-wrap{position:relative;margin:0 auto}
+.med-ring-wrap svg{display:block;width:100%;height:100%;transform:rotate(-90deg)}
+.med-ring-bg{stroke:var(--border)}
+.med-ring-fg{
+  stroke:var(--primary);stroke-linecap:round;transition:stroke-dashoffset 1s linear;
+  transform-box:fill-box;transform-origin:center;transform:scale(1);
+}
+.med-ring-wrap.playing .med-ring-fg{animation:medRingPulse 3.6s ease-in-out infinite}
+@keyframes medRingPulse{0%,100%{transform:scale(.9)}50%{transform:scale(1.1)}}
+.med-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.med-time{font-size:26px;font-weight:700;color:var(--text)}
+.med-state{font-size:11px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.06em}
+.med-pulse{position:absolute;inset:14px;border-radius:50%;background:var(--primary-pale);opacity:0;animation:none}
+.med-controls{display:flex;gap:10px;width:100%;justify-content:center}
+.med-controls .btn{flex:1;max-width:140px}
+.med-complete{
+  margin:0;background:var(--primary-pale);border:1px solid var(--accent);
+  border-radius:var(--r-sm);padding:14px 16px;font-size:13px;color:var(--primary);
+  display:none;width:100%;
+}
+.med-complete.show{display:block;animation:fadeUp .4s ease both}
+
+/* emergency contact — side by side row */
+.ec-list{display:flex;flex-direction:column;gap:12px;width:100%}
+.ec-list-row{flex-direction:row;flex-wrap:wrap}
+.ec-list-row .ec-card{flex:1;min-width:230px;flex-direction:column;align-items:flex-start;text-align:left}
+.ec-list-row .ec-call{margin-top:10px;align-self:stretch;justify-content:center}
+.ec-card{
+  display:flex;align-items:center;gap:14px;text-align:left;
+  background:linear-gradient(120deg,var(--primary-pale),#f8fbf9);
+  border:1px solid var(--accent);border-radius:var(--r-sm);padding:15px 16px;
+}
+.ec-ic{font-size:24px;flex-shrink:0}
+.ec-body{flex:1;min-width:0}
+.ec-body h4{font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:2px}
+.ec-num{font-size:15px;font-weight:700;color:var(--primary);letter-spacing:.02em}
+.ec-desc{font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:3px}
+.ec-call{
+  flex-shrink:0;background:var(--primary);color:#fff;border:none;border-radius:99px;
+  padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none;
+  display:flex;align-items:center;gap:5px;transition:all .2s;
+}
+.ec-call:hover{background:#4a7a64;transform:translateY(-1px)}
+.ec-note{font-size:11.5px;color:var(--text-muted);line-height:1.6;margin-top:2px;width:100%;text-align:left}
+
+@media(max-width:920px){
+  .care-launcher-grid{grid-template-columns:1fr}
+  .ec-list-row{flex-direction:column}
+  .ec-list-row .ec-card{min-width:0}
+}
+@media(max-width:600px){
+  .breath-stage.breath-stage-lg{width:170px;height:170px}
+  .med-ring-wrap.med-ring-wrap-lg{width:150px;height:150px}
+  .care-fullview-inner{padding:28px 18px;gap:18px}
+  .breath-controls .btn,.med-controls .btn{max-width:none}
+}
+
+
+/* ═══════════════════════════════════════════
+   INSIGHTS
+═══════════════════════════════════════════ */
+.insight-hero{
+  background:linear-gradient(120deg,var(--primary) 0%,#4a7a64 100%);
+  border-radius:var(--r);padding:24px 28px;color:#fff;margin-bottom:18px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.insight-hero h3{font-family:'Playfair Display',serif;font-size:18px;margin-bottom:6px}
+.insight-hero p{font-size:13px;opacity:.85;line-height:1.6;max-width:360px}
+.score-big{font-size:52px;font-weight:700;line-height:1}
+.score-big span{font-size:16px;opacity:.7;font-weight:400}
+.insights-grid{
+  display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;
+  gap:16px;align-items:stretch;
+}
+.insights-grid .card{
+  display:flex;flex-direction:column;align-items:stretch;
+  width:100%;height:100%;box-sizing:border-box;
+}
+.insights-grid .card .section-head{flex-shrink:0}
+.insights-grid .chart-box{margin-top:auto;margin-bottom:auto;flex-shrink:0}
+@media(max-width:600px){
+  .insights-grid{grid-template-columns:1fr;grid-auto-rows:auto}
+}
+.ai-insight{
+  background:linear-gradient(120deg,var(--primary-pale),#f8fbf9);
+  border-radius:var(--r-sm);padding:18px;border:1px solid var(--border);margin-bottom:16px;
+}
+.ai-badge{display:inline-flex;align-items:center;gap:5px;background:var(--primary);color:#fff;border-radius:99px;padding:3px 11px;font-size:11px;font-weight:600;margin-bottom:9px}
+.ai-insight p{font-size:13.5px;color:var(--text-mid);line-height:1.7}
+
+/* ═══════════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════════ */
+.settings-card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:22px;margin-bottom:16px}
+.settings-card h3{font-size:14px;font-weight:600;color:var(--text);padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.s-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(224,221,214,.45)}
+.s-row:last-child{border-bottom:0}
+.s-lbl{font-size:14px;font-weight:500;color:var(--text)}
+.s-desc{font-size:11px;color:var(--text-muted);margin-top:2px}
+/* toggle */
+.tog{position:relative;width:40px;height:22px;cursor:pointer;flex-shrink:0}
+.tog input{opacity:0;position:absolute;width:0;height:0}
+.tog-track{position:absolute;inset:0;background:var(--border);border-radius:99px;transition:.22s}
+.tog input:checked~.tog-track{background:var(--primary)}
+.tog-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.15);transition:.22s}
+.tog input:checked~.tog-thumb{transform:translateX(18px)}
+.sel{border:1.5px solid var(--border);border-radius:10px;padding:8px 13px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;cursor:pointer}
+.sel:focus{border-color:var(--primary)}
+.inp{border:1.5px solid var(--border);border-radius:10px;padding:8px 13px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;width:190px}
+.inp:focus{border-color:var(--primary)}
+.s-slider{width:180px;appearance:none;-webkit-appearance:none;height:4px;border-radius:99px;background:linear-gradient(90deg,var(--primary) 55%,var(--border) 55%);outline:none;cursor:pointer}
+.s-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--primary);cursor:pointer}
+.prev-btn{background:var(--primary-pale);border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:500;color:var(--primary);cursor:pointer;transition:all .2s}
+.prev-btn:hover{background:var(--accent);color:var(--text)}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+.mobile-nav{display:none}
+.hamburger{display:none}
+
+@media(max-width:1150px){:root{--sidebar:230px}}
+@media(max-width:920px){
+  :root{--sidebar:230px}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;z-index:200;transform:translateX(-100%);transition:.28s cubic-bezier(.4,0,.2,1)}
+  .sidebar.open{transform:translateX(0)}
+  .hamburger{display:flex;position:fixed;top:16px;left:16px;z-index:300;width:40px;height:40px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);cursor:pointer;align-items:center;justify-content:center;font-size:18px;box-shadow:var(--shadow)}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:190}
+  .overlay.show{display:block}
+  .topbar{padding-left:64px}
+  .care-grid{grid-template-columns:1fr 1fr}
+  .mobile-nav{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);z-index:100;padding:6px 0 12px}
+  .mn-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px;cursor:pointer;font-size:9px;font-weight:500;color:var(--text-muted);transition:color .2s}
+  .mn-item.active{color:var(--primary)}
+  .mn-ic{font-size:20px}
+  .page,.chat-page{padding-bottom:70px}
+  .chat-messages{padding-bottom:80px}
+}
+@media(max-width:600px){
+  .mood-row{grid-template-columns:repeat(3,1fr)}
+  .stat-row,.qa-grid{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+  .mstat-grid{grid-template-columns:1fr 1fr}
+  .care-grid{grid-template-columns:1fr}
+  .insight-hero{flex-direction:column;gap:14px;text-align:center}
+}
+
+/* ═══════════════════════════════════════════
+   DIARY TIMELINE (FEATURE 2, 3, 6)
+   Reuses .ai-reflect / .ai-reflect-side box styling so the
+   panel keeps the exact same footprint the AI Reflection box had.
+═══════════════════════════════════════════ */
+.diary-timeline-panel{overflow-y:auto}
+.diary-t-heading{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin:10px 0 6px}
+.diary-t-heading:first-child{margin-top:0}
+.diary-t-row{display:flex;align-items:center;gap:9px;padding:8px 6px;border-radius:var(--r-xs);cursor:pointer;transition:background .15s}
+.diary-t-row:hover{background:rgba(94,158,132,.08)}
+.diary-t-row.sel{background:var(--primary-pale);border:1px solid var(--primary-light)}
+.diary-t-icon{font-size:16px;flex-shrink:0}
+.diary-t-mid{min-width:0}
+.diary-t-date{font-size:12px;font-weight:600;color:var(--text)}
+.diary-t-preview{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.diary-t-empty{font-size:12px;color:var(--text-muted);line-height:1.6}
+
+/* ═══════════════════════════════════════════
+   CRISIS BANNER (FEATURE 12) — highest priority,
+   fixed so it stays visible across pages/devices.
+═══════════════════════════════════════════ */
+.crisis-banner{
+  display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+  z-index:500;max-width:min(560px,92vw);
+  background:#fff;border:1.5px solid #e8a4a4;border-radius:var(--r-sm);
+  box-shadow:var(--shadow-md);padding:14px 16px;
+  align-items:center;gap:12px;flex-wrap:wrap;
+}
+.crisis-banner.show{display:flex}
+.crisis-banner-txt{font-size:12.5px;color:var(--text);line-height:1.5;flex:1;min-width:160px}
+.crisis-help-btn{
+  background:#c85c5c;color:#fff;border:none;border-radius:99px;
+  padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;
+}
+.crisis-help-btn:hover{background:#b34a4a}
+.crisis-dismiss-btn{
+  background:transparent;border:none;color:var(--text-muted);cursor:pointer;
+  font-size:14px;min-width:44px;min-height:44px;
+}
+
+/* Temporary glowing pulse on Care Contacts after a crisis/violence
+   detection navigates the user there. Purely a class add/remove —
+   never touches the Care Contacts markup or content. */
+.crisis-highlight{
+  animation:crisisPulse 1.6s ease-in-out 3;
+  border-radius:var(--r);
+}
+@keyframes crisisPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(200,92,92,.4)}
+  50%{box-shadow:0 0 0 12px rgba(200,92,92,0),0 0 26px 4px rgba(200,92,92,.35)}
+}
+
+/* ═══════════════════════════════════════════
+   FEATURE 11 — additional responsive breakpoints
+   (existing 920px/600px rules above are preserved as-is)
+═══════════════════════════════════════════ */
+@media(max-width:1439px) and (min-width:1024px){
+  :root{--sidebar:250px}
+}
+@media(max-width:1023px) and (min-width:768px){
+  :root{--sidebar:220px}
+  .mood-mini-grid-row{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:767px){
+  .mood-mini-grid-row{grid-template-columns:repeat(2,1fr)}
+  .j-toolbar{flex-wrap:wrap}
+  .mbubble{max-width:88%}
+  .suggestions{flex-wrap:wrap}
+}
+@media(max-width:479px){
+  .mood-mini-grid-row{grid-template-columns:repeat(2,1fr)}
+  .topbar{padding:16px 16px 12px 64px}
+  .topbar-left h2{font-size:18px}
+  .mbubble{max-width:94%}
+  .crisis-banner{bottom:76px}
+}
+/* touch target + tap-friendliness, all breakpoints */
+@media(max-width:920px){
+  .j-btn,.btn,.ec-call,.send-btn,.ico-btn,.sug-chip,.mn-item{min-height:44px}
+  input[type=range].slider{min-height:24px}
+  .note-tf,.chat-tf,.inp{min-height:44px}
+}
+</style>
+</head>
+<body>
+
+<button class="hamburger" id="hamBtn" aria-label="Menu">☰</button>
+<div class="overlay" id="overlay"></div>
+
+<!-- ══════════════════════════════
+     LEFT SIDEBAR
+══════════════════════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="logo">
+    <div class="logo-mark">🌿</div>
+    <div class="logo-copy">
+      <h1>ThunAI</h1>
+      <span>AI that listens and cares</span>
+    </div>
+  </div>
+
+  <nav>
+    <div class="nav-item active" data-page="chat">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Chat
+      <span class="nav-badge">3</span>
+    </div>
+    <div class="nav-item" data-page="selfcare">
+      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Self Care
+    </div>
+    <div class="nav-item" data-page="journal">
+      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      Journal
+    </div>
+    <div class="nav-item" data-page="insights">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Insights
+    </div>
+    <div class="nav-item" data-page="settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </div>
+  </nav>
+
+  <!-- illustration + quote card -->
+  <div class="sidebar-card">
+    <div class="sidebar-illus">
+      <div class="illus-figure">🧘‍♀️</div>
+      <div class="illus-leaves">
+        <span class="leaf">🌿</span>
+        <span class="leaf">🍃</span>
+      </div>
+    </div>
+    <div class="sidebar-quote">
+      <p>It's okay not to be okay. You're doing your best.</p>
+      <div class="heart">♥</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════
+     CONTENT AREA
+══════════════════════════════ -->
+<div class="content-area">
+
+  <!-- TOP BAR -->
+  <div class="topbar" id="topbar">
+    <div class="topbar-left">
+      <h2 id="topTitle">Hi, I'm ThunAI 🌿</h2>
+      <p id="topSub">How are you feeling today?</p>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-username" id="topUsername">User</span>
+      <div class="avatar-btn" id="topAvatarBtn">👤</div>
+      <span style="font-size:13px;color:var(--text-muted);cursor:pointer">∨</span>
+    </div>
+  </div>
+
+  <!-- ── PAGES WRAPPER ── -->
+  <div class="pages">
+
+    <!-- CHAT (special flex layout) -->
+    <div class="chat-page active" id="page-chat">
+      <div class="chat-messages" id="chatMsgs">
+        <!-- initial AI messages -->
+        <div class="mrow ai">
+          <div class="mavatar">🌿</div>
+          <div class="mbody">
+            <div class="mbubble">Hi! I'm ThunAI. I'm here to listen and support you.<br>How are you feeling today? 💚</div>
+            <div class="mtime">10:00 AM</div>
+          </div>
+        </div>
+        <div class="mrow ai">
+          <div class="mavatar">🌿</div>
+          <div class="mbody">
+            <div class="mbubble">Remember — this is a completely safe, judgment-free space. Share anything that's on your mind. 🌸</div>
+            <div class="mtime">10:00 AM</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- suggestion chips -->
+      <div class="suggestions">
+        <div class="sug-chip" onclick="useSug(this)"><span class="sc">🌿</span> Yes, let's do it</div>
+        <div class="sug-chip" onclick="useSug(this)"><span class="sc">💬</span> I'd like to talk more</div>
+        <div class="sug-chip" onclick="useSug(this)"><span class="sc">🌱</span> Give me a tip</div>
+        <div class="sug-chip" onclick="useSug(this)"><span class="sc">😌</span> Just listening is okay</div>
+      </div>
+
+      <!-- input -->
+      <div class="chat-input-area">
+        <div class="emotion-bar">
+          Detected emotion: <span class="e-pill" id="ePill">😌 Neutral</span>
+        </div>
+        <div class="input-row">
+          <button class="ico-btn" title="Attach file">📎</button>
+          <textarea class="chat-tf" id="chatTf" placeholder="Type your message..." rows="1"
+            oninput="autoH(this);sniffEmo(this.value)"></textarea>
+          <button class="ico-btn" title="Voice input">🎙️</button>
+          <button class="send-btn" id="sendBtn" title="Send">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SELF CARE -->
+    <div class="page" id="page-selfcare">
+
+      <!-- Default grid: preview cards -->
+      <div class="care-launcher-grid" id="careLauncherView">
+        <div class="care-launch-card" onclick="expandCare('breathing')">
+          <div class="care-launch-ic">🌬️</div>
+          <h3>Breathing Exercise</h3>
+          <p>Guided inhale–hold–exhale breathing to calm your nervous system.</p>
+          <span class="care-launch-cta">Tap to begin →</span>
+        </div>
+        <div class="care-launch-card" onclick="expandCare('meditation')">
+          <div class="care-launch-ic">🧘</div>
+          <h3>Meditation</h3>
+          <p>Choose a duration and settle into a quiet, guided pause with soft ambient sound.</p>
+          <span class="care-launch-cta">Tap to begin →</span>
+        </div>
+
+        <!-- Emergency Contact — always visible, contacts side by side -->
+        <div class="care-panel care-panel-wide" style="align-items:stretch">
+          <div class="care-panel-head"><span class="cp-ic">🆘</span><h3>Emergency Contact</h3></div>
+          <p class="care-panel-sub">If you're in crisis or need immediate support, these helplines are free, confidential, and available right now. You don't have to go through this alone.</p>
+
+          <div class="ec-list ec-list-row">
+            <div class="ec-card">
+              <div class="ec-ic">💚</div>
+              <div class="ec-body">
+                <h4>Tele-MANAS National Mental Health Helpline</h4>
+                <div class="ec-num">14416</div>
+                <div class="ec-desc">24×7 free, confidential support in English and regional languages, run by the Govt. of India.</div>
+              </div>
+              <a class="ec-call" href="tel:14416">📞 Call</a>
+            </div>
+            <div class="ec-card">
+              <div class="ec-ic">🌿</div>
+              <div class="ec-body">
+                <h4>KIRAN Mental Health Helpline</h4>
+                <div class="ec-num">1800-599-0019</div>
+                <div class="ec-desc">24×7 toll-free rehabilitation helpline for psychological support and crisis management.</div>
+              </div>
+              <a class="ec-call" href="tel:18005990019">📞 Call</a>
+            </div>
+            <div class="ec-card">
+              <div class="ec-ic">🚨</div>
+              <div class="ec-body">
+                <h4>Emergency Number</h4>
+                <div class="ec-num">112</div>
+                <div class="ec-desc">India's national emergency number for police, medical, or immediate danger.</div>
+              </div>
+              <a class="ec-call" href="tel:112">📞 Call</a>
+            </div>
+          </div>
+          <p class="ec-note">💚 You matter, and reaching out is a sign of strength, not weakness.</p>
+        </div>
+      </div>
+
+      <!-- Expanded: Breathing Exercise (fills self-care section) -->
+      <div class="care-fullview" id="careFullBreathing">
+        <button class="care-back-btn" onclick="closeCare()">← Back to Self Care</button>
+        <div class="care-fullview-inner">
+          <div class="care-panel-head" style="justify-content:center;text-align:center"><span class="cp-ic">🌬️</span><h3>Breathing Exercise</h3></div>
+          <p class="care-panel-sub" style="text-align:center">Follow the circle — breathe in as it grows, hold, then breathe out as it settles.</p>
+
+          <div class="breath-stage idle breath-stage-lg" id="breathStage">
+            <div class="breath-orb" id="breathOrb"></div>
+            <div class="breath-txt">
+              <div class="bt-main" id="breathMain">Ready?</div>
+              <div class="bt-count" id="breathCount">Tap Start to begin</div>
+            </div>
+          </div>
+
+          <div class="breath-controls">
+            <button class="btn btn-primary" id="breathStartBtn" onclick="breathStart()">Start</button>
+            <button class="btn btn-soft" id="breathPauseBtn" onclick="breathPause()" disabled>Pause</button>
+            <button class="btn btn-outline" id="breathStopBtn" onclick="breathStop()" disabled>Stop</button>
+          </div>
+          <div class="breath-cycles" id="breathCycles">0 cycles completed</div>
+        </div>
+      </div>
+
+      <!-- Expanded: Meditation (fills self-care section) -->
+      <div class="care-fullview" id="careFullMeditation">
+        <button class="care-back-btn" onclick="closeCare()">← Back to Self Care</button>
+        <div class="care-fullview-inner">
+          <div class="care-panel-head" style="justify-content:center;text-align:center"><span class="cp-ic">🧘</span><h3>Meditation</h3></div>
+          <p class="care-panel-sub" style="text-align:center">Choose a duration and settle into a quiet, guided pause with gentle background music.</p>
+
+          <div class="med-dur-row" id="medDurRow">
+            <div class="med-dur-chip sel" data-min="5">5 min</div>
+            <div class="med-dur-chip" data-min="10">10 min</div>
+            <div class="med-dur-chip" data-min="15">15 min</div>
+            <div class="med-dur-chip" data-min="20">20 min</div>
+            <input type="number" class="med-custom-inp" id="medCustom" placeholder="Custom" min="1" max="120">
+          </div>
+
+          <div class="med-ring-wrap med-ring-wrap-lg" id="medRingWrap">
+            <div class="med-pulse"></div>
+            <svg width="220" height="220" viewBox="0 0 220 220">
+              <circle class="med-ring-bg" cx="110" cy="110" r="98" fill="none" stroke-width="9"/>
+              <circle class="med-ring-fg" id="medRingFg" cx="110" cy="110" r="98" fill="none" stroke-width="9"
+                stroke-dasharray="615.75" stroke-dashoffset="0"/>
+            </svg>
+            <div class="med-ring-center">
+              <div class="med-time" id="medTime">05:00</div>
+              <div class="med-state" id="medState">Ready</div>
+            </div>
+          </div>
+
+          <div class="med-controls">
+            <button class="btn btn-primary" id="medPlayBtn" onclick="medPlay()">Play</button>
+            <button class="btn btn-soft" id="medPauseBtn" onclick="medPause()" disabled>Pause</button>
+            <button class="btn btn-outline" id="medStopBtn" onclick="medStop()" disabled>Stop</button>
+          </div>
+          <div class="med-complete" id="medComplete">🌿 Great job! Your meditation session is complete.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- JOURNAL -->
+    <div class="page" id="page-journal">
+
+      <!-- Journal writing + Diary Timeline side by side -->
+      <div class="card mb16">
+        <div class="j-toolbar">
+          <button class="j-btn active" id="journalNewBtn">✏️ New Entry</button>
+          <button class="j-btn" id="journalSearchBtn">🔍 Search</button>
+          <button class="j-btn" style="margin-left:auto" id="journalSaveBtn">💾 Save</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:12px;color:var(--text-muted)" id="journalDateLbl">June 18, 2026 · Thursday</span>
+          <span class="pill">Personal</span>
+          <select class="sel" id="journalDateSelect" style="max-width:240px;margin-left:auto">
+            <option value="">Jump to last 30 days</option>
+          </select>
+        </div>
+        <div class="journal-body-row">
+          <textarea class="journal-textarea" id="journalTf" placeholder="Start writing your thoughts here… This is your safe space."></textarea>
+          <div class="ai-reflect ai-reflect-side diary-timeline-panel">
+            <div class="ai-reflect-lbl">📔 My Diary — Diary Timeline</div>
+            <div class="diary-timeline-list" id="diaryTimelineList">
+              <!-- populated by journal.js: Today / Yesterday / Previous Dates, last 30 days -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mood Log — full-width rectangle, moved from Mood Tracker -->
+      <div class="card mood-log-rect mb16">
+        <p class="section-head mb12">😊 Log Your Mood</p>
+        <div class="mood-log-rect-body">
+          <div class="mood-mini-grid mood-mini-grid-row" id="moodLogGrid">
+            <div class="mood-mini sel" data-m="Happy"><div class="mme">😊</div><div class="mml">Happy</div></div>
+            <div class="mood-mini" data-m="Calm"><div class="mme">😌</div><div class="mml">Calm</div></div>
+            <div class="mood-mini" data-m="Anxious"><div class="mme">😟</div><div class="mml">Anxious</div></div>
+            <div class="mood-mini" data-m="Sad"><div class="mme">😔</div><div class="mml">Sad</div></div>
+            <div class="mood-mini" data-m="Tired"><div class="mme">😴</div><div class="mml">Tired</div></div>
+            <div class="mood-mini" data-m="Frustrated"><div class="mme">😡</div><div class="mml">Frustrated</div></div>
+          </div>
+          <div class="mood-log-rect-side">
+            <div class="range-row">
+              <span class="range-lbl">Intensity</span>
+              <input type="range" class="slider" min="1" max="10" value="6" id="intSlider" oninput="updateInt(this.value)">
+              <span id="intVal" style="font-size:13px;font-weight:600;color:var(--primary);min-width:22px">6</span>
+            </div>
+            <textarea class="note-tf" id="moodNoteTf" placeholder="Add a note about how you're feeling..."></textarea>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn btn-primary" style="flex:1" onclick="saveMood()">Save Mood</button>
+              <button class="btn btn-soft" onclick="clearMood()">Clear</button>
+            </div>
+            <div id="moodSavedMsg" style="display:none;font-size:12px;color:var(--primary);margin-top:8px;text-align:center">✓ Mood saved for today</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="page" id="page-insights">
+      <div class="insight-hero">
+        <div>
+          <h3 id="insightHeroTitle">Your Weekly Emotional Summary</h3>
+          <p id="insightHeroDesc">You appear calmer this week compared to last week. Positive mood frequency increased by 23%. Keep going — your self-care habits are working!</p>
+        </div>
+        <div style="text-align:center;flex-shrink:0">
+          <div class="score-big" id="wellnessScoreVal">78<span>/100</span></div>
+          <div style="font-size:12px;opacity:.75;margin-top:4px">Wellness Score</div>
+        </div>
+      </div>
+
+      <div class="ai-insight">
+        <div class="ai-badge">✨ AI Insight</div>
+        <p id="aiInsightText">Based on your journal entries and mood logs, you tend to feel calmer in the mornings and more stressed in the afternoon. Your breathing exercises correlate strongly with reduced anxiety scores. Consider scheduling important tasks in the morning for peak performance.</p>
+      </div>
+
+      <div class="insights-grid">
+        <div class="card"><p class="section-head mb12">Chat Emotion Analysis</p><div class="chart-box"><canvas id="chatEmoChart"></canvas></div></div>
+        <div class="card"><p class="section-head mb12">Weekly Mood Trend</p><div class="chart-box"><canvas id="insWeekChart"></canvas></div></div>
+        <div class="card"><p class="section-head mb12">Journal Emotion Analysis</p><div class="chart-box"><canvas id="jEmoChart"></canvas></div></div>
+        <div class="card"><p class="section-head mb12">Monthly Emotional Summary</p><div class="chart-box"><canvas id="monSumChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <!-- Profile Settings -->
+        <div class="settings-card">
+          <h3>Profile Settings</h3>
+          <div class="s-row">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:52px;height:52px;border-radius:50%;overflow:hidden;border:2px solid var(--border);flex-shrink:0;background:var(--primary-pale)">
+                <img id="profileAvatarImg" src="" alt="Profile picture" style="width:100%;height:100%;object-fit:cover">
+              </div>
+              <div>
+                <div class="s-lbl" style="margin-bottom:6px">Profile Picture</div>
+                <input type="file" accept="image/*" id="profilePicUpload" style="display:none">
+                <label for="profilePicUpload" class="btn btn-outline" style="padding:6px 14px;font-size:12px;margin:0">Change Photo</label>
+              </div>
+            </div>
+          </div>
+          <div class="s-row"><div><div class="s-lbl">Username</div></div><input class="inp" type="text" id="settingsUsername" value="User" placeholder="Your username"></div>
+          <div class="s-row"><div><div class="s-lbl">Display Name</div><div class="s-desc">Optional — shown in the top bar instead of your username</div></div><input class="inp" type="text" id="settingsDisplayName" placeholder="Optional"></div>
+          <div class="s-row"><div><div class="s-lbl">Email</div><div class="s-desc">Used for reminders and reports (optional)</div></div><input class="inp" type="email" id="settingsEmail" placeholder="you@email.com"></div>
+          <div class="s-row"><div><div class="s-lbl">Language</div></div><select class="sel" id="settingsLanguage"><option>English</option><option>Hindi</option><option>Tamil</option><option>Telugu</option></select></div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+            <button class="btn btn-primary" id="saveProfileBtn">Save Profile</button>
+            <span id="profileSavedMsg" style="display:none;font-size:12px;color:var(--primary);font-weight:600">✓ Profile saved</span>
+          </div>
+        </div>
+
+        <!-- Notification Settings -->
+        <div class="settings-card">
+          <h3>Notification Settings</h3>
+          <div class="s-row"><div><div class="s-lbl">Daily Mood Reminder</div><div class="s-desc">Remind me to log my mood</div></div><label class="tog"><input type="checkbox" checked><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+          <div class="s-row"><div><div class="s-lbl">Weekly Insights Email</div></div><label class="tog"><input type="checkbox" checked><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+          <div class="s-row"><div><div class="s-lbl">Breathing Reminders</div></div><label class="tog"><input type="checkbox"><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+          <div class="s-row"><div><div class="s-lbl">Reminder Time</div></div><select class="sel"><option>8:00 AM</option><option>9:00 AM</option><option>12:00 PM</option><option>6:00 PM</option><option>9:00 PM</option></select></div>
+        </div>
+
+        <!-- Voice Settings -->
+        <div class="settings-card">
+          <h3>Voice Settings</h3>
+          <div class="s-row"><div><div class="s-lbl">Voice Responses</div><div class="s-desc">Enable AI voice replies</div></div><label class="tog"><input type="checkbox" id="voiceEnabledToggle" checked><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+
+          <div class="s-row" style="flex-direction:column;align-items:flex-start;gap:10px" id="voiceModeRow">
+            <div class="s-lbl">Voice Mode</div>
+            <div style="display:flex;gap:18px;font-size:13px;color:var(--text-mid)">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="voiceMode" value="default" id="voiceModeDefault" checked> Default Voice</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="voiceMode" value="cloned" id="voiceModeCloned"> My Cloned Voice</label>
+            </div>
+          </div>
+
+          <div id="defaultVoiceSection">
+            <div class="s-row">
+              <div><div class="s-lbl">Female Default Voice</div></div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <input type="radio" name="defaultVoice" value="female" id="voiceFemaleRadio" checked>
+                <button class="prev-btn" id="previewFemaleBtn" data-voice="female">▶ Preview</button>
+              </div>
+            </div>
+            <div class="s-row">
+              <div><div class="s-lbl">Male Default Voice</div></div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <input type="radio" name="defaultVoice" value="male" id="voiceMaleRadio">
+                <button class="prev-btn" id="previewMaleBtn" data-voice="male">▶ Preview</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="clonedVoiceSection" style="display:none">
+            <div class="s-row" style="flex-direction:column;align-items:flex-start;gap:8px" id="clonedVoiceEmpty">
+              <div class="s-lbl">Cloned Voice</div>
+              <div class="s-desc" id="clonedVoiceStatus">No cloned voice uploaded.</div>
+              <input type="file" accept="audio/*" id="voiceUpload" style="display:none">
+              <label for="voiceUpload" class="btn btn-primary" style="margin:0" id="uploadVoiceBtn">Upload Voice</label>
+            </div>
+            <div class="s-row" style="flex-direction:column;align-items:flex-start;gap:6px;display:none" id="clonedVoiceInfo">
+              <div class="s-desc" style="color:var(--primary);font-weight:600">✓ Voice Uploaded Successfully</div>
+              <div class="s-desc">File: <span id="clonedVoiceFilename"></span></div>
+              <div class="s-desc">Uploaded: <span id="clonedVoiceDate"></span></div>
+              <div style="display:flex;gap:10px;margin-top:6px">
+                <label for="voiceUpload" class="btn btn-outline" style="padding:6px 14px;font-size:12px;margin:0">Replace Voice</label>
+                <button class="btn btn-outline" style="padding:6px 14px;font-size:12px;border-color:#f5c6c6;color:#c0392b" id="deleteVoiceBtn">Delete Voice</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="s-row" style="flex-direction:column;align-items:flex-start;gap:8px;border-bottom:0" id="volumeRow">
+            <div class="s-lbl">Volume</div>
+            <div style="display:flex;align-items:center;gap:10px;width:100%"><span style="font-size:16px">🔇</span><input type="range" class="s-slider" min="0" max="1" step="0.1" value="0.8" style="flex:1" id="volumeSlider"><span style="font-size:16px">🔊</span></div>
+          </div>
+        </div>
+
+        <!-- Privacy Settings -->
+        <div class="settings-card">
+          <h3>Privacy Settings</h3>
+          <div class="s-row"><div><div class="s-lbl">Save Chat History</div><div class="s-desc">Store conversations locally</div></div><label class="tog"><input type="checkbox" checked><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+          <div class="s-row"><div><div class="s-lbl">Anonymous Mode</div><div class="s-desc">Chat without saving identity</div></div><label class="tog"><input type="checkbox"><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+          <div class="s-row"><div><div class="s-lbl">Share Analytics</div><div class="s-desc">Help improve ThunAI</div></div><label class="tog"><input type="checkbox" checked><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+          <div class="s-row"><div><div class="s-lbl">Export My Data</div></div><button class="btn btn-outline" style="padding:8px 14px;font-size:12px">Export</button></div>
+          <div class="s-row"><div><div class="s-lbl">Delete Account</div><div class="s-desc" style="color:#d9534f">This cannot be undone</div></div><button style="background:#fff5f5;color:#c0392b;border:1.5px solid #f5c6c6;border-radius:10px;padding:8px 14px;font-size:12px;cursor:pointer">Delete</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /pages -->
+</div><!-- /content-area -->
+
+<!-- MOBILE NAV -->
+<nav class="mobile-nav" id="mobileNav">
+  <div class="mn-item active" data-page="chat"><div class="mn-ic">💬</div>Chat</div>
+  <div class="mn-item" data-page="selfcare"><div class="mn-ic">🌱</div>Care</div>
+  <div class="mn-item" data-page="journal"><div class="mn-ic">📔</div>Journal</div>
+  <div class="mn-item" data-page="insights"><div class="mn-ic">📊</div>Insights</div>
+</nav>
+
+<script>
+/* ─── PAGE TOPBAR COPY ─── */
+const titles = {
+  chat:     ["Hi, I'm ThunAI", 'How are you feeling today?'],
+  selfcare: ['Self Care', 'Small moments of care make a big difference'],
+  journal:  ['My Journal', 'Write freely, and log your mood alongside it'],
+  insights: ['Insights', 'Understanding your emotional patterns'],
+  settings: ['Settings', 'Personalise your ThunAI experience'],
+};
+
+/* ─── NAVIGATION ─── */
+function goto(page){
+  // hide all pages
+  document.querySelectorAll('.page,.chat-page').forEach(p=>{
+    p.classList.remove('active');
+    if(p.classList.contains('chat-page')) p.style.display='none';
+  });
+  // leaving self-care: stop any running session and reset to the launcher grid
+  if(page !== 'selfcare'){
+    const cb = document.getElementById('careFullBreathing');
+    const cm = document.getElementById('careFullMeditation');
+    if((cb && cb.classList.contains('active')) || (cm && cm.classList.contains('active'))){
+      closeCare();
+    }
+  }
+  // show target
+  const el = document.getElementById('page-'+page);
+  if(!el) return;
+  if(el.classList.contains('chat-page')){el.style.display='flex';el.classList.add('active')}
+  else el.classList.add('active');
+
+  // nav highlights
+  document.querySelectorAll('.nav-item,.mn-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('[data-page="'+page+'"]').forEach(i=>i.classList.add('active'));
+
+  // topbar
+  const t = titles[page]||['ThunAI',''];
+  document.getElementById('topTitle').textContent = t[0];
+  document.getElementById('topSub').textContent = t[1];
+
+  // close sidebar on mobile
+  if(window.innerWidth<=920){
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+  }
+
+  // lazy charts
+  setTimeout(()=>initCharts(page),60);
+}
+
+document.querySelectorAll('[data-page]').forEach(el=>{
+  el.addEventListener('click',()=>goto(el.dataset.page));
+});
+
+// hamburger
+document.getElementById('hamBtn').addEventListener('click',()=>{
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+});
+document.getElementById('overlay').addEventListener('click',()=>{
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+});
+
+document.querySelectorAll('#moodLogGrid .mood-mini').forEach(c=>{
+  c.addEventListener('click',function(){
+    document.querySelectorAll('#moodLogGrid .mood-mini').forEach(x=>x.classList.remove('sel'));
+    this.classList.add('sel');
+  });
+});
+
+/* ─── CHAT ─── */
+function sendMsg(){
+  if (typeof window.chatSendMsgOffline === 'function') {
+    return window.chatSendMsgOffline();
+  }
+}
+
+function appendMsg(role, text){
+  const wrap = document.getElementById('chatMsgs');
+  const now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'mrow ' + role;
+  // FEATURE 13: avatar image comes from the centralized ThunAvatars
+  // helper (Wings logo for ai / user's avatar for user) instead of
+  // a hardcoded emoji, with a graceful emoji fallback if avatars.js
+  // hasn't loaded for some reason.
+  const avatar = window.ThunAvatars ? window.ThunAvatars.avatarHTML(role) : `<div class="mavatar">🌿</div>`;
+  const bubble = `<div class="mbubble">${esc(text)}</div><div class="mtime">${now}${role==='user'?' <span class="tick">✓✓</span>':''}</div>`;
+  if(role==='ai'){
+    div.innerHTML = `${avatar}<div class="mbody">${bubble}</div>`;
+  } else {
+    div.innerHTML = `<div class="mbody">${bubble}</div>${avatar}`;
+  }
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function renderPersistedChatHistory(){
+  const wrap = document.getElementById('chatMsgs');
+  if (!wrap) return;
+
+  const existingTurnRows = Array.from(wrap.children).filter(child => child.classList && child.classList.contains('mrow')).length;
+  if (existingTurnRows > 2) return;
+
+  let history = [];
+  try {
+    const raw = localStorage.getItem('thunai_chat_history');
+    history = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.warn('Could not restore chat history', e);
+    history = [];
+  }
+
+  if (!Array.isArray(history) || history.length === 0) return;
+
+  history.forEach(turn => {
+    if (!turn || !turn.userMessage) return;
+    appendMsg('user', turn.userMessage);
+    if (turn.aiReply) {
+      appendMsg('ai', turn.aiReply);
+    } else if (turn.status === 'pending' && turn.userMessage) {
+      showTyping('✨ ThunAI is preparing your response...');
+    }
+  });
+}
+
+function appendMsgHtml(role, html){
+  const wrap = document.getElementById('chatMsgs');
+  const now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'mrow ' + role;
+  const avatar = window.ThunAvatars ? window.ThunAvatars.avatarHTML(role) : `<div class="mavatar">🌿</div>`;
+  const bubble = `<div class="mbubble">${html}</div><div class="mtime">${now}${role==='user'?' <span class="tick">✓✓</span>':''}</div>`;
+  if(role==='ai'){
+    div.innerHTML = `${avatar}<div class="mbody">${bubble}</div>`;
+  } else {
+    div.innerHTML = `<div class="mbody">${bubble}</div>${avatar}`;
+  }
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function showTyping(statusText){
+  console.log(`[TYPING_SHOW] Showing typing indicator with status: ${statusText}`);
+  removeTyping();
+  const wrap = document.getElementById('chatMsgs');
+  const div = document.createElement('div');
+  div.id = 'typingRow'; div.className = 'typing-row';
+  const avatar = window.ThunAvatars ? window.ThunAvatars.avatarHTML('ai') : `<div class="mavatar">🌿</div>`;
+  const statusHtml = statusText ? `<div style="font-size:12px;color:var(--primary);font-weight:500;margin-bottom:4px;">${esc(statusText)}</div>` : '';
+  div.innerHTML = `${avatar}<div class="typing-bubble" style="flex-direction:column;align-items:flex-start;">${statusHtml}<div style="display:flex;gap:5px;align-items:center"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div>`;
+  wrap.appendChild(div); wrap.scrollTop = wrap.scrollHeight;
+}
+function removeTyping(){ 
+  const e=document.getElementById('typingRow'); 
+  if(e) {
+    console.log(`[TYPING_REMOVE] Removing typing indicator`);
+    e.remove();
+  }
+}
+
+/**
+ * THE single rendering function for an assistant reply that came from
+ * POST /chat (with or without voice). Nothing else in the app is allowed
+ * to render an assistant bubble for a backend reply -- Chatoffline.js
+ * calls this exactly once, only after the voice job has resolved
+ * (completed / failed / timed out) or immediately when voice was never
+ * requested. It always produces exactly one bubble containing avatar,
+ * text, optional replay button + audio player, and timestamp.
+ *
+ * @param {Object} payload
+ * @param {string} payload.text - assistant reply text
+ * @param {string|null} payload.audioUrl - relative or absolute audio URL, or null/undefined for no audio
+ * @param {string} [payload.emotion] - detected emotion label, updates the emotion pill if present
+ * @param {string} [payload.timestamp] - ISO timestamp from the backend; falls back to "now"
+ */
+function renderAssistantResponse({ text, audioUrl, emotion, timestamp } = {}){
+  console.log(`[RENDER_ASSISTANT] Called with text_len=${text ? text.length : 0}, audioUrl=${audioUrl}, emotion=${emotion}, timestamp=${timestamp}`);
+  
+  try {
+    removeTyping();
+
+    const wrap = document.getElementById('chatMsgs');
+    if (!wrap) {
+      console.error(`[RENDER_ERROR] chatMsgs container not found!`);
+      return;
+    }
+    
+    const div = document.createElement('div');
+    div.className = 'mrow ai';
+
+    const avatar = window.ThunAvatars ? window.ThunAvatars.avatarHTML('ai') : `<div class="mavatar">🌿</div>`;
+    const timeLabel = (() => {
+      const d = timestamp ? new Date(timestamp) : new Date();
+      return isNaN(d.getTime())
+        ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    })();
+
+    let audioHtml = '';
+    if (audioUrl) {
+      const apiBase = window.getApiBase();
+      const fullAudioUrl = audioUrl.startsWith('http') ? audioUrl : `${apiBase}${audioUrl.startsWith('/') ? '' : '/'}${audioUrl}`;
+      console.log(`[RENDER_AUDIO] Creating audio element with fullAudioUrl=${fullAudioUrl}`);
+      audioHtml = `
+        <div class="assistant-audio-row" style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+          <button type="button" class="chat-action-btn assistant-replay-btn" onclick="replayAssistantAudio(this)" title="Replay">🔊 Replay</button>
+          <audio class="assistant-audio-player" controls autoplay preload="auto" src="${esc(fullAudioUrl)}" style="max-width:100%; height:38px; border-radius:12px; outline:none; background:#f0ede7;"></audio>
+        </div>`;
+    } else {
+      console.log(`[RENDER_NO_AUDIO] No audioUrl provided, rendering text-only bubble`);
+    }
+
+    const bubble = `<div class="mbubble">${esc(text || '')}${audioHtml}</div><div class="mtime">${timeLabel}</div>`;
+    div.innerHTML = `${avatar}<div class="mbody">${bubble}</div>`;
+
+    wrap.appendChild(div);
+    wrap.scrollTop = wrap.scrollHeight;
+    console.log(`[RENDER_DOM_COMPLETE] AI bubble added to DOM, chatMsgs.children.length=${wrap.children.length}`);
+
+    if (emotion) {
+      const emotionPill = document.getElementById('ePill');
+      if (emotionPill) {
+        const emotionEmojis = { happy:'😊', sad:'😔', angry:'😠', anxious:'😟', calm:'😌', neutral:'😐', frustrated:'😤' };
+        const emoji = emotionEmojis[emotion.toLowerCase()] || '😐';
+        emotionPill.textContent = `${emoji} ${emotion.charAt(0).toUpperCase() + emotion.slice(1)}`;
+      }
+    }
+    
+    console.log(`[RENDER_COMPLETE] renderAssistantResponse finished successfully`);
+  } catch (err) {
+    console.error(`[RENDER_EXCEPTION] renderAssistantResponse caught exception:`, err);
+    removeTyping();
+    const wrap = document.getElementById('chatMsgs');
+    if (wrap) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'mrow ai';
+      errorDiv.innerHTML = `<div class="mavatar">🌿</div><div class="mbody"><div class="mbubble">There was a technical issue displaying my response. Please try again.</div></div>`;
+      wrap.appendChild(errorDiv);
+      wrap.scrollTop = wrap.scrollHeight;
+    }
+  }
+}
+
+/**
+ * Replays the audio player inside the bubble that owns the clicked
+ * Replay button. Scoped with closest() so it works even if multiple
+ * assistant audio messages exist in the chat log.
+ */
+function replayAssistantAudio(btn){
+  const row = btn.closest('.mrow');
+  const audioEl = row ? row.querySelector('.assistant-audio-player') : null;
+  if (audioEl) {
+    audioEl.currentTime = 0;
+    audioEl.play().catch(err => console.warn('Replay blocked by browser:', err));
+  }
+}
+
+function useSug(chip){
+  const txt = chip.innerText.replace(/^[^\w]+/,'').trim();
+  document.getElementById('chatTf').value = txt;
+  sendMsg();
+}
+
+function autoH(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; }
+
+function sniffEmo(t){
+  const p = document.getElementById('ePill');
+  t = t.toLowerCase();
+  if(/\b(happy|great|wonderful|joy|excited|love)\b/.test(t)) p.textContent='😊 Happy';
+  else if(/\b(sad|cry|hurt|alone|lonely|grief)\b/.test(t)) p.textContent='😔 Sad';
+  else if(/\b(anxious|worry|stress|nervous|scared|overwhelm)\b/.test(t)) p.textContent='😟 Anxious';
+  else if(/\b(tired|exhausted|sleepy|fatigue)\b/.test(t)) p.textContent='😴 Tired';
+  else if(/\b(angry|frustrated|mad|upset|irritated)\b/.test(t)) p.textContent='😡 Frustrated';
+  else p.textContent='😌 Neutral';
+}
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ─── INTENSITY SLIDER ─── */
+function updateInt(v){
+  document.getElementById('intVal').textContent=v;
+  const p=((v-1)/9)*100;
+  document.getElementById('intSlider').style.background=`linear-gradient(90deg,var(--primary) ${p}%,var(--border) ${p}%)`;
+}
+
+/* ─── MOOD LOG (Journal page) ─── */
+function saveMood(){
+  const msg = document.getElementById('moodSavedMsg');
+  msg.style.display = 'block';
+  clearTimeout(window._moodMsgT);
+  window._moodMsgT = setTimeout(()=>{ msg.style.display = 'none'; }, 2600);
+}
+function clearMood(){
+  document.querySelectorAll('#moodLogGrid .mood-mini').forEach(x=>x.classList.remove('sel'));
+  document.getElementById('intSlider').value = 6;
+  updateInt(6);
+  document.getElementById('moodNoteTf').value = '';
+  document.getElementById('moodSavedMsg').style.display = 'none';
+}
+
+/* ─── SELF CARE: launcher ↔ full view ─── */
+function expandCare(which){
+  document.getElementById('careLauncherView').style.display = 'none';
+  document.getElementById('careFullBreathing').classList.remove('active');
+  document.getElementById('careFullMeditation').classList.remove('active');
+  if(which === 'breathing'){
+    document.getElementById('careFullBreathing').classList.add('active');
+  } else if(which === 'meditation'){
+    document.getElementById('careFullMeditation').classList.add('active');
+  }
+}
+function closeCare(){
+  breathStop();
+  medStop();
+  document.getElementById('careFullBreathing').classList.remove('active');
+  document.getElementById('careFullMeditation').classList.remove('active');
+  document.getElementById('careLauncherView').style.display = 'grid';
+}
+
+function startBreathingFromChat(){
+  goto('selfcare');
+  setTimeout(() => {
+    expandCare('breathing');
+  }, 100);
+}
+
+/* ─── BREATHING EXERCISE ─── */
+const BREATH_DURATIONS = { inhale: 4000, hold: 4000, exhale: 6000 };
+const BREATH_LABELS = { inhale: 'Breathe In', hold: 'Hold', exhale: 'Breathe Out' };
+const BREATH_BASE_SCALE = 1;
+const BREATH_PEAK_SCALE = 220/120; // orb grows from 120px to 220px
+
+let breathPhase = 'idle';
+let breathPhaseDur = 0;
+let breathElapsedAtPause = 0;   // ms already elapsed in current phase
+let breathPhaseStartTs = null;  // timestamp the current run segment began
+let breathRafId = null;
+let breathRunning = false;
+let breathPaused = false;
+let breathCycleCount = 0;
+
+function breathOrbScale(phase, progress){
+  const eased = 0.5 - 0.5*Math.cos(Math.PI*progress); // smooth ease-in-out
+  if(phase==='inhale') return BREATH_PEAK_SCALE - (BREATH_PEAK_SCALE-BREATH_BASE_SCALE)*eased;
+  if(phase==='hold') return BREATH_BASE_SCALE;
+  if(phase==='exhale') return BREATH_BASE_SCALE + (BREATH_PEAK_SCALE-BREATH_BASE_SCALE)*eased;
+  return BREATH_PEAK_SCALE;
+}
+function breathApplyScale(scale){
+  document.getElementById('breathOrb').style.transform = 'translate(-50%,-50%) scale(' + scale.toFixed(4) + ')';
+}
+function breathSetPhase(phase){
+  breathPhase = phase;
+  breathPhaseDur = BREATH_DURATIONS[phase];
+  breathElapsedAtPause = 0;
+  breathPhaseStartTs = performance.now();
+  document.getElementById('breathStage').className = 'breath-stage breath-stage-lg ' + phase;
+  document.getElementById('breathMain').textContent = BREATH_LABELS[phase];
+}
+function breathTick(now){
+  if(!breathRunning || breathPaused) return;
+  const elapsed = breathElapsedAtPause + (now - breathPhaseStartTs);
+  const progress = Math.min(elapsed/breathPhaseDur, 1);
+  breathApplyScale(breathOrbScale(breathPhase, progress));
+  document.getElementById('breathCount').textContent = Math.max(1, Math.ceil((breathPhaseDur-elapsed)/1000)) + 's';
+
+  if(elapsed >= breathPhaseDur){
+    if(breathPhase==='inhale') breathSetPhase('hold');
+    else if(breathPhase==='hold') breathSetPhase('exhale');
+    else {
+      breathCycleCount++;
+      document.getElementById('breathCycles').textContent = breathCycleCount + ' cycle' + (breathCycleCount===1?'':'s') + ' completed';
+      breathSetPhase('inhale');
+    }
+  }
+  breathRafId = requestAnimationFrame(breathTick);
+}
+function breathStart(){
+  document.getElementById('breathStartBtn').disabled = true;
+  document.getElementById('breathPauseBtn').disabled = false;
+  document.getElementById('breathStopBtn').disabled = false;
+  document.getElementById('breathPauseBtn').textContent = 'Pause';
+  breathRunning = true;
+  breathPaused = false;
+  breathCycleCount = 0;
+  document.getElementById('breathCycles').textContent = '0 cycles completed';
+  breathSetPhase('inhale');
+  breathRafId = requestAnimationFrame(breathTick);
+}
+function breathPause(){
+  const btn = document.getElementById('breathPauseBtn');
+  if(!breathPaused){
+    breathPaused = true;
+    cancelAnimationFrame(breathRafId);
+    breathElapsedAtPause += performance.now() - breathPhaseStartTs;
+    document.getElementById('breathCount').textContent = 'Paused';
+    btn.textContent = 'Resume';
+  } else {
+    breathPaused = false;
+    breathPhaseStartTs = performance.now();
+    btn.textContent = 'Pause';
+    breathRafId = requestAnimationFrame(breathTick);
+  }
+}
+function breathStop(){
+  breathRunning = false;
+  breathPaused = false;
+  cancelAnimationFrame(breathRafId);
+  breathPhase = 'idle';
+  breathCycleCount = 0;
+  document.getElementById('breathCycles').textContent = '0 cycles completed';
+  document.getElementById('breathStage').className = 'breath-stage breath-stage-lg idle';
+  document.getElementById('breathMain').textContent = 'Ready?';
+  document.getElementById('breathCount').textContent = 'Tap Start to begin';
+  breathApplyScale(BREATH_BASE_SCALE);
+  document.getElementById('breathStartBtn').disabled = false;
+  document.getElementById('breathPauseBtn').disabled = true;
+  document.getElementById('breathPauseBtn').textContent = 'Pause';
+  document.getElementById('breathStopBtn').disabled = true;
+}
+
+/* ─── MEDITATION ─── */
+let medDurationSec = 5*60;
+let medRemainingSec = medDurationSec;
+let medInterval = null;
+let medAudioCtx = null, medGain = null, medOsc1 = null, medOsc2 = null;
+const MED_CIRC = 2*Math.PI*98; // ring circumference (matches expanded ring r=98)
+
+document.querySelectorAll('.med-dur-chip').forEach(chip=>{
+  chip.addEventListener('click',()=>{
+    document.querySelectorAll('.med-dur-chip').forEach(c=>c.classList.remove('sel'));
+    chip.classList.add('sel');
+    document.getElementById('medCustom').value = '';
+    medSetDuration(parseInt(chip.dataset.min)*60);
+  });
+});
+document.getElementById('medCustom').addEventListener('input',function(){
+  const v = parseInt(this.value);
+  if(v > 0){
+    document.querySelectorAll('.med-dur-chip').forEach(c=>c.classList.remove('sel'));
+    medSetDuration(v*60);
+  }
+});
+
+function medSetDuration(sec){
+  if(medInterval) return; // don't change mid-session
+  medDurationSec = sec;
+  medRemainingSec = sec;
+  medUpdateDisplay();
+}
+
+function medUpdateDisplay(){
+  const m = Math.floor(medRemainingSec/60).toString().padStart(2,'0');
+  const s = Math.floor(medRemainingSec%60).toString().padStart(2,'0');
+  document.getElementById('medTime').textContent = m+':'+s;
+  const frac = medRemainingSec/medDurationSec;
+  document.getElementById('medRingFg').style.strokeDasharray = MED_CIRC;
+  document.getElementById('medRingFg').style.strokeDashoffset = MED_CIRC*(1-frac);
+}
+
+function medStartAudio(){
+  try{
+    medAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    medGain = medAudioCtx.createGain();
+    medGain.gain.value = 0;
+    medGain.connect(medAudioCtx.destination);
+
+    medOsc1 = medAudioCtx.createOscillator();
+    medOsc1.type = 'sine'; medOsc1.frequency.value = 174; // calming low pad
+    medOsc2 = medAudioCtx.createOscillator();
+    medOsc2.type = 'sine'; medOsc2.frequency.value = 220;
+
+    medOsc1.connect(medGain); medOsc2.connect(medGain);
+    medOsc1.start(); medOsc2.start();
+    medGain.gain.linearRampToValueAtTime(0.05, medAudioCtx.currentTime + 2);
+  }catch(e){ /* audio not available — continue silently */ }
+}
+function medStopAudio(){
+  if(medGain && medAudioCtx){
+    try{
+      medGain.gain.linearRampToValueAtTime(0, medAudioCtx.currentTime + 1);
+      setTimeout(()=>{ if(medAudioCtx){ medAudioCtx.close(); medAudioCtx=null; } }, 1100);
+    }catch(e){}
+  }
+}
+
+function medPlay(){
+  document.getElementById('medComplete').classList.remove('show');
+  if(!medInterval){
+    if(medRemainingSec <= 0) medRemainingSec = medDurationSec;
+    medStartAudio();
+    document.getElementById('medRingWrap').classList.add('playing');
+    document.getElementById('medState').textContent = 'Breathing…';
+    document.getElementById('medPlayBtn').disabled = true;
+    document.getElementById('medPauseBtn').disabled = false;
+    document.getElementById('medStopBtn').disabled = false;
+    medInterval = setInterval(()=>{
+      medRemainingSec--;
+      medUpdateDisplay();
+      if(medRemainingSec <= 0){
+        medFinish();
+      }
+    },1000);
+  }
+}
+function medPause(){
+  clearInterval(medInterval);
+  medInterval = null;
+  document.getElementById('medRingWrap').classList.remove('playing');
+  document.getElementById('medState').textContent = 'Paused';
+  document.getElementById('medPlayBtn').disabled = false;
+  document.getElementById('medPlayBtn').textContent = 'Resume';
+  medStopAudio();
+}
+function medStop(){
+  clearInterval(medInterval);
+  medInterval = null;
+  medRemainingSec = medDurationSec;
+  medStopAudio();
+  medUpdateDisplay();
+  document.getElementById('medRingWrap').classList.remove('playing');
+  document.getElementById('medState').textContent = 'Ready';
+  document.getElementById('medPlayBtn').disabled = false;
+  document.getElementById('medPlayBtn').textContent = 'Play';
+  document.getElementById('medPauseBtn').disabled = true;
+  document.getElementById('medStopBtn').disabled = true;
+  document.getElementById('medComplete').classList.remove('show');
+}
+function medFinish(){
+  clearInterval(medInterval);
+  medInterval = null;
+  medStopAudio();
+  document.getElementById('medRingWrap').classList.remove('playing');
+  document.getElementById('medState').textContent = 'Complete';
+  document.getElementById('medPlayBtn').disabled = false;
+  document.getElementById('medPlayBtn').textContent = 'Play';
+  document.getElementById('medPauseBtn').disabled = true;
+  document.getElementById('medStopBtn').disabled = true;
+  document.getElementById('medComplete').classList.add('show');
+  medRemainingSec = medDurationSec;
+  medUpdateDisplay();
+}
+medUpdateDisplay();
+
+/* ─── SETTINGS ─── */
+function voicePrev(){
+  if('speechSynthesis' in window){
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance("Hello, I'm ThunAI — your emotional wellness companion. I'm here to listen and care.");
+    u.rate=1;u.pitch=1.1;u.volume=0.85;speechSynthesis.speak(u);
+  }
+}
+
+/* ─── CHARTS ─── */
+const CI = {};
+const gFont = {family:'DM Sans',size:11};
+const gColor = 'rgba(44,62,53,.04)';
+const tickColor = '#8FA49E';
+const baseOpts = {
+  plugins:{ legend:{ labels:{ color:tickColor, font:gFont, boxWidth:11 } } },
+  scales:{
+    x:{ grid:{color:gColor}, ticks:{color:tickColor,font:gFont} },
+    y:{ grid:{color:gColor}, ticks:{color:tickColor,font:gFont}, beginAtZero:true }
+  }
+};
+
+function mkChart(id, type, data, opts){
+  if(CI[id]){CI[id].destroy();delete CI[id];}
+  const canvas=document.getElementById(id);
+  if(!canvas) return;
+  CI[id]=new Chart(canvas,{type,data,options:{...baseOpts,...opts,plugins:{...baseOpts.plugins,...(opts.plugins||{})}}});
+}
+
+function initCharts(page){
+  if(page==='insights'){
+    if (window.InsightsAnalytics && typeof window.InsightsAnalytics.render === 'function') {
+      window.InsightsAnalytics.render();
+    } else {
+      mkChart('chatEmoChart','doughnut',{
+        labels:['Positive','Neutral','Negative'],
+        datasets:[{data:[52,30,18],backgroundColor:['#5E9E84','#C6D9C8','#E8A87C'],borderWidth:0}]
+      },{plugins:{legend:{position:'bottom',labels:{color:tickColor,font:gFont,boxWidth:10}}},cutout:'62%',scales:{x:{display:false},y:{display:false}}});
+      mkChart('insWeekChart','line',{
+        labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        datasets:[
+          {label:'This Week',data:[65,68,72,70,80,78,79],borderColor:'#5E9E84',backgroundColor:'rgba(94,158,132,.1)',fill:true,tension:.4,borderWidth:2,pointRadius:3,pointBackgroundColor:'#5E9E84'},
+          {label:'Last Week',data:[60,62,65,63,68,66,70],borderColor:'#C6D9C8',backgroundColor:'transparent',fill:false,tension:.4,borderWidth:1.5,borderDash:[5,4],pointRadius:2}
+        ]
+      },{});
+      mkChart('jEmoChart','bar',{
+        labels:['Calm','Happy','Anxious','Sad','Tired'],
+        datasets:[{label:'Frequency',data:[12,9,6,4,3],backgroundColor:['#5E9E84','#A9C7B7','#F4E8B2','#9b8ee8','#88B79A'],borderRadius:8}]
+      },{plugins:{legend:{display:false}}});
+      mkChart('monSumChart','line',{
+        labels:['Jan','Feb','Mar','Apr','May','Jun'],
+        datasets:[{label:'Wellness Score',data:[60,63,68,71,74,78],fill:true,backgroundColor:'rgba(94,158,132,.12)',borderColor:'#5E9E84',borderWidth:2,tension:.4,pointBackgroundColor:'#5E9E84',pointRadius:4}]
+      },{});
+    }
+  }
+}
+
+// Start on chat (matching reference image). 
+// NOTE: Disabled automatic restoration of saved turns to show a fresh chat on each page load.
+// Previous conversations are still saved to localStorage and ChromaDB for backend memory.
+// To restore this behavior, uncomment the renderPersistedChatHistory() call below.
+window.addEventListener('load',()=>{
+  document.getElementById('page-chat').style.display='flex';
+  // renderPersistedChatHistory();  // DISABLED: Fresh chat on every page refresh
+});
+</script>
+
+<!-- ══════════════════════════════
+     NEW FEATURE MODULES (added — nothing above this point was
+     restructured). Loaded after the main script since they use
+     goto/appendMsg/showTyping/updateInt/clearMood/closeCare.
+     Order matters: utilities first, page wiring last.
+══════════════════════════════ -->
+<script src="dateUtils.js"></script>
+<script src="apiConfig.js"></script>
+<script src="BackendService.js"></script>
+<script src="JournalStorage.js"></script>
+<script src="JournalService.js"></script>
+<script src="InsightsAnalytics.js"></script>
+<script src="storage.js"></script>
+<script src="settings.js"></script>
+<script src="avatars.js"></script>
+<script src="emojiAnimation.js"></script>
+<script src="offlineKnowledgeBase.js"></script>
+<script src="crisisDetection.js"></script>
+<script src="journal.js"></script>
+<script src="Chatoffline.js"></script>
+</body>
+</html>
