@@ -81,7 +81,7 @@ function crisisFuzzyHighRiskWord(normText) {
 /* ── Self-harm / suicide risk patterns (checked against the
    normalized+expanded text from crisisNormalize) ── */
 const CRISIS_PATTERNS = [
-  /\bi want to die\b/, /\bi am going to die\b/, /\bi going to die\b/, /\bi will die\b/, /\bdie\b/,
+  /\bi want to die\b/, /\bi am going to die\b/, /\bi going to die\b/, /\bi will die\b/,
   /\bwish i (was|were) dead\b/, /\bbetter off dead\b/,
   /\bi do not want to live\b/, /\bi do not want to be here\b/, /\bi do not want to exist\b/,
   /\bi do not want to live anymore\b/,
@@ -99,6 +99,13 @@ const CRISIS_PATTERNS = [
   /\bself[\s-]?harm\b/, /\bcut myself\b/, /\bhurt myself\b/, /\bharm myself\b/,
   /\bfeel like dying\b/, /\bi am dying\b/, /\bthinking about suicide\b/,
   /\bplanning to (end|kill)\b/
+];
+
+const CRISIS_EXCLUSION_PATTERNS = [
+  /\bdying of laughter\b/, /\bdying laughing\b/, /\bdying from laughter\b/,
+  /\b(?:project|exam|assignment|course|homework|work|job) is killing me\b/,
+  /\b(?:project|exam|assignment|course|homework|work|job) is driving me to die\b/,
+  /\b(?:i|we|they) (?:am|are|were|was) (?:dying|die) (?:of|from)? (?:laughter|laughing|funny|jokes?)\b/
 ];
 
 /* ── Violence / harm-to-others patterns ── */
@@ -121,6 +128,11 @@ const VIOLENCE_PATTERNS = [
 function classifyCrisis(text) {
   if (!text) return null;
   const norm = crisisNormalize(text);
+
+  if (CRISIS_EXCLUSION_PATTERNS.some(re => re.test(norm))) {
+    return null;
+  }
+
   if (CRISIS_PATTERNS.some(re => re.test(norm)) || crisisFuzzyHighRiskWord(norm)) return 'crisis';
   if (VIOLENCE_PATTERNS.some(re => re.test(norm))) return 'violence';
   return null;
