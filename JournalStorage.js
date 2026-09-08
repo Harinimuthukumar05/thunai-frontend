@@ -104,11 +104,14 @@ const JournalStorage = {
     const isoDate = entry.date;
     const nowIso = new Date().toISOString();
 
+    const mood = entry.mood !== undefined ? entry.mood : '';
+    const emotion = entry.emotion !== undefined ? entry.emotion : mood;
     const formattedEntry = {
       userId,
       date: isoDate,
       content: entry.content !== undefined ? entry.content : '',
-      mood: entry.mood !== undefined ? entry.mood : '',
+      mood: mood,
+      emotion: emotion,
       intensity: entry.intensity !== undefined ? entry.intensity : null,
       note: entry.note !== undefined ? entry.note : '',
       lastUpdated: entry.lastUpdated || nowIso

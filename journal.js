@@ -172,10 +172,11 @@ function saveJournalEntry() {
   const content = (document.getElementById('journalTf') || {}).value || '';
   const intensity = Number((document.getElementById('intSlider') || {}).value || 6);
   const note = (document.getElementById('moodNoteTf') || {}).value || '';
-  const mood = journalGetSelectedMood();
+  const mood = journalGetSelectedMood() || 'Neutral';
+  const emotion = mood;
   const targetDate = journalActiveDate || window.DateUtils.toISO();
 
-  window.DiaryStorage.saveEntry(targetDate, { content, mood, intensity, note });
+  window.DiaryStorage.saveEntry(targetDate, { content, mood, emotion, intensity, note });
   journalRenderTimeline();
   journalRenderDateSelector();
 

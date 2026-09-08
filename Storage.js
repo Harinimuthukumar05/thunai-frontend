@@ -41,7 +41,9 @@ function loadDiaryEntry(isoDate) {
  */
 function saveDiaryEntry(isoDate, fields) {
   const userId = getActiveUserId();
-  const entry = Object.assign({ date: isoDate }, fields);
+  const entry = Object.assign({ date: isoDate }, fields, {
+    emotion: fields && (fields.emotion || fields.mood || 'neutral')
+  });
 
   if (window.JournalStorage) {
     window.JournalStorage.saveJournal(userId, entry);
