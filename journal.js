@@ -168,6 +168,18 @@ function journalGetSelectedMood() {
  * does), then refreshes the timeline. Bound to the journal
  * toolbar's "Save" button.
  */
+async function journalRefreshFromBackend() {
+  const userId = typeof getActiveUserId === 'function' ? getActiveUserId() : 'User';
+  if (window.JournalStorage && typeof window.JournalStorage.getUser === 'function') {
+    const data = await window.JournalStorage.getUser(userId);
+    if (data && Array.isArray(data.journals)) {
+      window.JournalStorage._journals = data.journals;
+    }
+  }
+  journalRenderTimeline();
+  journalRenderDateSelector();
+}
+
 function saveJournalEntry() {
   const content = (document.getElementById('journalTf') || {}).value || '';
   const intensity = Number((document.getElementById('intSlider') || {}).value || 6);
@@ -193,8 +205,17 @@ function saveJournalEntry() {
     }).catch(err => console.error('journal direct save failed', err));
   }
 
-  journalRenderTimeline();
-  journalRenderDateSelector();
+  const saveBtn = document.getElementById('journalSaveBtn');
+  if (saveBtn) {
+    const oldText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '✓ Saved';
+    clearTimeout(window._journalSaveBtnTimer);
+    window._journalSaveBtnTimer = setTimeout(() => { saveBtn.innerHTML = oldText; }, 1800);
+  }
+
+  setTimeout(() => {
+    journalRefreshFromBackend();
+  }, 300);
 
   if (window.CrisisDetection && window.CrisisDetection.detect(content)) {
     window.CrisisDetection.showBanner();
@@ -202,6 +223,7 @@ function saveJournalEntry() {
 
   const msg = document.getElementById('moodSavedMsg');
   if (msg) {
+    msg.textContent = '✓ Journal saved for today';
     msg.style.display = 'block';
     clearTimeout(window._journalSaveMsgT);
     window._journalSaveMsgT = setTimeout(() => { msg.style.display = 'none'; }, 2600);
@@ -279,7 +301,10 @@ async function initJournal() {
     const activeUser = getActiveUserId();
     if (activeUser) {
       try {
-        await window.JournalStorage.getUser(activeUser);
+        const userData = await window.JournalStorage.getUser(activeUser);
+        if (userData && Array.isArray(userData.journals)) {
+          window.JournalStorage._journals = userData.journals;
+        }
       } catch (e) {
         console.warn('initJournal: failed to load journal user data', e);
       }

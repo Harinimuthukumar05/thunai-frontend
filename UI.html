@@ -1894,12 +1894,13 @@ function saveMood(){
     const mood = document.querySelector('#moodLogGrid .mood-mini.sel') ? document.querySelector('#moodLogGrid .mood-mini.sel').dataset.m : 'Neutral';
     const intensity = Number((document.getElementById('intSlider') || {}).value || 6);
     const note = (document.getElementById('moodNoteTf') || {}).value || '';
-    const targetDate = (window.journalActiveDate || window.DateUtils && window.DateUtils.toISO ? window.DateUtils.toISO() : new Date().toISOString().slice(0, 10));
+    const targetDate = (window.journalActiveDate || (window.DateUtils && typeof window.DateUtils.toISO === 'function' ? window.DateUtils.toISO() : new Date().toISOString().slice(0, 10)));
     window.DiaryStorage.saveEntry(targetDate, { content, mood, emotion: mood, intensity, note });
   }
 
   const msg = document.getElementById('moodSavedMsg');
   if (msg) {
+    msg.textContent = '✓ Mood saved for today';
     msg.style.display = 'block';
     clearTimeout(window._moodMsgT);
     window._moodMsgT = setTimeout(()=>{ msg.style.display = 'none'; }, 2600);

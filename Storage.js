@@ -59,9 +59,24 @@ function saveDiaryEntry(isoDate, fields) {
 function listDiaryEntries() {
   const userId = getActiveUserId();
   if (window.JournalStorage) {
+    if (Array.isArray(window.JournalStorage._journals) && window.JournalStorage._journals.length === 0) {
+      if (typeof window.JournalStorage.getUser === 'function') {
+        window.JournalStorage.getUser(userId).catch(() => {});
+      }
+    }
     return window.JournalStorage.getAllJournals(userId);
   }
   return [];
+}
+
+async function refreshDiaryEntriesFromBackend() {
+  const userId = getActiveUserId();
+  if (window.JournalStorage && typeof window.JournalStorage.getUser === 'function') {
+    const data = await window.JournalStorage.getUser(userId);
+    if (Array.isArray(data && data.journals)) {
+      window.JournalStorage._journals = data.journals;
+    }
+  }
 }
 
 /**
@@ -82,5 +97,6 @@ window.DiaryStorage = {
   saveEntry: saveDiaryEntry,
   loadEntry: loadDiaryEntry,
   listEntries: listDiaryEntries,
-  loadAll: dsLoadAll
+  loadAll: dsLoadAll,
+  refreshFromBackend: refreshDiaryEntriesFromBackend
 };
