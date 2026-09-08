@@ -174,13 +174,28 @@ function saveJournalEntry() {
   const note = (document.getElementById('moodNoteTf') || {}).value || '';
   const mood = journalGetSelectedMood() || 'Neutral';
   const emotion = mood;
-  const targetDate = journalActiveDate || window.DateUtils.toISO();
+  const targetDate = journalActiveDate || (window.DateUtils ? window.DateUtils.toISO() : new Date().toISOString().slice(0, 10));
 
-  window.DiaryStorage.saveEntry(targetDate, { content, mood, emotion, intensity, note });
+  const savePayload = { content, mood, emotion, intensity, note, date: targetDate };
+
+  if (window.DiaryStorage && typeof window.DiaryStorage.saveEntry === 'function') {
+    window.DiaryStorage.saveEntry(targetDate, savePayload);
+  } else if (window.getApiBase && window.JournalStorage && typeof window.JournalStorage.saveJournal === 'function') {
+    const userId = typeof getActiveUserId === 'function' ? getActiveUserId() : 'User';
+    window.JournalStorage.saveJournal(userId, savePayload);
+  } else if (window.getApiBase) {
+    const userId = typeof getActiveUserId === 'function' ? getActiveUserId() : 'User';
+    const base = window.getApiBase();
+    fetch(`${base}/journals/${encodeURIComponent(userId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(savePayload)
+    }).catch(err => console.error('journal direct save failed', err));
+  }
+
   journalRenderTimeline();
   journalRenderDateSelector();
 
-  // crisis check runs on every save — highest priority, always on
   if (window.CrisisDetection && window.CrisisDetection.detect(content)) {
     window.CrisisDetection.showBanner();
   }

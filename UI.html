@@ -1408,7 +1408,7 @@ input[type=range].slider::-webkit-slider-thumb{-webkit-appearance:none;width:18p
         <div class="j-toolbar">
           <button class="j-btn active" id="journalNewBtn">✏️ New Entry</button>
           <button class="j-btn" id="journalSearchBtn">🔍 Search</button>
-          <button class="j-btn" style="margin-left:auto" id="journalSaveBtn">💾 Save</button>
+          <button class="j-btn" style="margin-left:auto" id="journalSaveBtn" type="button" onclick="saveJournalEntry(); return false;">💾 Save</button>
         </div>
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px">
           <span style="font-size:12px;color:var(--text-muted)" id="journalDateLbl">June 18, 2026 · Thursday</span>
