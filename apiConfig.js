@@ -37,7 +37,7 @@
  */
 
 // ↓ CHANGE THIS VALUE TO SWITCH ENVIRONMENTS ↓
-const API_BASE_URL = 'https://affair-ventures-designation-trademark.trycloudflare.com';
+const API_BASE_URL = 'https://series-sea-partially-surface.trycloudflare.com';
 // ↑ CHANGE THIS VALUE TO SWITCH ENVIRONMENTS ↑
 
 // Expose to global window scope for all frontend modules
@@ -50,6 +50,6 @@ window.API_BASE_URL = API_BASE_URL;
  * @returns {string} Backend API base URL (e.g., 'http://127.0.0.1:8000')
  */
 window.getApiBase = function() {
-  return window.API_BASE_URL || 'https://affair-ventures-designation-trademark.trycloudflare.com';
+  return window.API_BASE_URL || 'https://series-sea-partially-surface.trycloudflare.com';
 }
 
