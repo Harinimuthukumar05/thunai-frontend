@@ -1488,10 +1488,23 @@ function updateInt(v){
 
 /* ─── MOOD LOG (Journal page) ─── */
 function saveMood(){
+  if (typeof saveJournalEntry === 'function') {
+    saveJournalEntry();
+  } else if (window.DiaryStorage && typeof window.DiaryStorage.saveEntry === 'function') {
+    const content = (document.getElementById('journalTf') || {}).value || '';
+    const mood = document.querySelector('#moodLogGrid .mood-mini.sel') ? document.querySelector('#moodLogGrid .mood-mini.sel').dataset.m : 'Neutral';
+    const intensity = Number((document.getElementById('intSlider') || {}).value || 6);
+    const note = (document.getElementById('moodNoteTf') || {}).value || '';
+    const targetDate = (window.journalActiveDate || window.DateUtils && window.DateUtils.toISO ? window.DateUtils.toISO() : new Date().toISOString().slice(0, 10));
+    window.DiaryStorage.saveEntry(targetDate, { content, mood, emotion: mood, intensity, note });
+  }
+
   const msg = document.getElementById('moodSavedMsg');
-  msg.style.display = 'block';
-  clearTimeout(window._moodMsgT);
-  window._moodMsgT = setTimeout(()=>{ msg.style.display = 'none'; }, 2600);
+  if (msg) {
+    msg.style.display = 'block';
+    clearTimeout(window._moodMsgT);
+    window._moodMsgT = setTimeout(()=>{ msg.style.display = 'none'; }, 2600);
+  }
 }
 function clearMood(){
   document.querySelectorAll('#moodLogGrid .mood-mini').forEach(x=>x.classList.remove('sel'));
