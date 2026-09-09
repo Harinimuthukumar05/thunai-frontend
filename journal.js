@@ -14,6 +14,18 @@
 let journalActiveDate = null;
 
 /**
+ * Auto-refresh timeline from backend periodically to catch entries
+ * saved in other browser tabs or by other users (if shared account).
+ */
+let journalRefreshInterval = null;
+function journalStartAutoRefresh(intervalMs = 60000) {
+  if (journalRefreshInterval) clearInterval(journalRefreshInterval);
+  journalRefreshInterval = setInterval(() => {
+    journalRefreshFromBackend();
+  }, intervalMs);
+}
+
+/**
  * Sets the live "Sunday, August 2, 2026"-style date label at the
  * top of the journal editor. Re-derives from `new Date()` — never
  * hardcoded.
@@ -55,6 +67,8 @@ function journalRenderDateSelector() {
 
 /**
  * Builds one row of the Diary Timeline list for a given entry.
+ * Displays mood emoji, date, preview text, and mood label as a
+ * journal-like entry that users can click to view full entry.
  * @param {object} entry {date, title, content, mood, ...}
  * @returns {HTMLElement}
  */
@@ -66,16 +80,26 @@ function journalBuildTimelineRow(entry) {
 
   const moodIcons = { Happy: '😊', Calm: '😌', Anxious: '😟', Sad: '😔', Tired: '😴', Frustrated: '😡' };
   const icon = moodIcons[entry.mood] || '📝';
-  const preview = (entry.content || '').split(/[.!?\n]/)[0].slice(0, 60) || 'No entry text yet';
-
+  
+  // Get preview text from content
+  const preview = (entry.content || '').split(/[.!?\n]/)[0].slice(0, 55) || 'No entry text';
+  const moodLabel = entry.mood || 'Neutral';
+  
+  // Get relative date label
+  const relativeDate = window.DateUtils ? window.DateUtils.relativeLabel(entry.date) : entry.date;
+  
   row.innerHTML = `
     <span class="diary-t-icon">${icon}</span>
     <div class="diary-t-mid">
-      <div class="diary-t-date">${window.DateUtils.relativeLabel(entry.date)}</div>
-      <div class="diary-t-preview">${preview}${preview.length >= 60 ? '…' : ''}</div>
+      <div class="diary-t-date">${relativeDate}</div>
+      <div class="diary-t-preview">${preview}${preview.length >= 55 ? '…' : ''}</div>
+      <div class="diary-t-mood">${moodLabel}${entry.intensity ? ` · Intensity: ${entry.intensity}/10` : ''}</div>
     </div>
   `;
+  
   row.addEventListener('click', () => journalLoadDate(entry.date));
+  row.style.cursor = 'pointer';
+  
   return row;
 }
 
@@ -105,6 +129,9 @@ function journalRenderTimeline() {
     else groups.Previous.push(e);
   });
 
+  // Sort Previous dates in descending order (newest first)
+  groups.Previous.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
   list.innerHTML = '';
   const heading = document.createElement('div');
   heading.className = 'diary-t-heading';
@@ -113,13 +140,25 @@ function journalRenderTimeline() {
 
   ['Today', 'Yesterday', 'Previous'].forEach(key => {
     if (groups[key].length === 0) return;
-    groups[key].forEach(entry => list.appendChild(journalBuildTimelineRow(entry)));
+    groups[key].forEach(entry => {
+      const row = journalBuildTimelineRow(entry);
+      list.appendChild(row);
+    });
   });
+
+  // Auto-scroll to selected entry if one is active
+  if (journalActiveDate) {
+    const activeRow = list.querySelector(`[data-date="${journalActiveDate}"]`);
+    if (activeRow && activeRow.scrollIntoView) {
+      activeRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
 }
 
 /**
  * Loads a given date's entry into the big journal editor + mood
- * log controls, and highlights it in the timeline. No AI involved.
+ * log controls, and highlights it in the timeline. Displays it like
+ * a real journal page with formatted date, mood indicator, and content.
  * @param {string} isoDate
  */
 function journalLoadDate(isoDate) {
@@ -129,28 +168,44 @@ function journalLoadDate(isoDate) {
   const ta = document.getElementById('journalTf');
   if (ta) ta.value = entry.content || '';
 
-  // reflect the loaded date in the header label when it's not today
+  // Display the date in a journal-page style format
   const lbl = document.getElementById('journalDateLbl');
   if (lbl) {
-    lbl.textContent = isoDate === window.DateUtils.toISO()
-      ? window.DateUtils.formatLong()
-      : window.DateUtils.formatLong(window.DateUtils.fromISO(isoDate));
+    const isToday = isoDate === window.DateUtils.toISO();
+    const dateObj = window.DateUtils.fromISO(isoDate);
+    const longDate = window.DateUtils.formatLong(dateObj);
+    const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    // Format as: "Sunday, September 8, 2026"
+    lbl.textContent = isToday ? longDate : longDate;
+    lbl.title = `Date: ${isoDate}`;
   }
 
-  // reflect mood / intensity / note into the mood log controls
+  // Show mood selection and update intensity/note
   document.querySelectorAll('#moodLogGrid .mood-mini').forEach(c => {
     c.classList.toggle('sel', c.dataset.m === entry.mood);
   });
+  
   const intSlider = document.getElementById('intSlider');
   if (intSlider && entry.intensity) {
     intSlider.value = entry.intensity;
     if (typeof updateInt === 'function') updateInt(entry.intensity);
   }
+  
   const noteTf = document.getElementById('moodNoteTf');
   if (noteTf) noteTf.value = entry.note || '';
 
-  journalRenderTimeline(); // re-render to move the "sel" highlight
+  // Highlight in timeline and scroll to view
+  journalRenderTimeline();
   journalRenderDateSelector();
+  
+  // Update visual highlight for the selected entry
+  const timelineList = document.getElementById('diaryTimelineList');
+  if (timelineList) {
+    timelineList.querySelectorAll('.diary-t-row').forEach(row => {
+      row.classList.toggle('sel', row.dataset.date === isoDate);
+    });
+  }
 }
 
 /**
@@ -312,7 +367,10 @@ async function initJournal() {
   }
 
   journalRenderDateLabel();
+  
+  // First render the timeline with all loaded entries
   journalRenderTimeline();
+  journalRenderDateSelector();
 
   const existingToday = window.DiaryStorage.loadEntry(journalActiveDate);
   if (existingToday) journalLoadDate(journalActiveDate);
@@ -334,7 +392,8 @@ async function initJournal() {
   const ta = document.getElementById('journalTf');
   if (ta) ta.addEventListener('input', () => journalOnInputCheck(ta.value));
 
-  journalRenderDateSelector();
+  // Start auto-refresh to sync timeline with backend (every 60 seconds)
+  journalStartAutoRefresh(60000);
 
   if (window.EmojiAnimation) window.EmojiAnimation.apply();
 

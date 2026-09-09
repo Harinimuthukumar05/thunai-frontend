@@ -362,8 +362,13 @@ input[type=range].slider::-webkit-slider-thumb{-webkit-appearance:none;width:18p
   line-height:2;color:var(--text);background:var(--card);outline:none;resize:none;
   background-image:repeating-linear-gradient(transparent,transparent 31px,#f0ede7 31px,#f0ede7 32px);
   background-attachment:local;background-position:0 16px;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.03);
+  transition:all .2s ease;
 }
-.journal-textarea:focus{border-color:var(--primary)}
+.journal-textarea:focus{
+  border-color:var(--primary);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.03), 0 0 0 3px rgba(94,158,132,.1);
+}
 .ai-reflect{
   background:linear-gradient(120deg,var(--primary-pale),#f6fbf8);
   border-radius:var(--r-sm);padding:16px 18px;margin-top:14px;
@@ -679,18 +684,26 @@ input[type=range].slider::-webkit-slider-thumb{-webkit-appearance:none;width:18p
    DIARY TIMELINE (FEATURE 2, 3, 6)
    Reuses .ai-reflect / .ai-reflect-side box styling so the
    panel keeps the exact same footprint the AI Reflection box had.
+   Enhanced with mood display and better styling for journal experience.
 ═══════════════════════════════════════════ */
 .diary-timeline-panel{overflow-y:auto}
 .diary-t-heading{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin:10px 0 6px}
 .diary-t-heading:first-child{margin-top:0}
-.diary-t-row{display:flex;align-items:center;gap:9px;padding:8px 6px;border-radius:var(--r-xs);cursor:pointer;transition:background .15s}
-.diary-t-row:hover{background:rgba(94,158,132,.08)}
-.diary-t-row.sel{background:var(--primary-pale);border:1px solid var(--primary-light)}
-.diary-t-icon{font-size:16px;flex-shrink:0}
-.diary-t-mid{min-width:0}
-.diary-t-date{font-size:12px;font-weight:600;color:var(--text)}
-.diary-t-preview{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.diary-t-empty{font-size:12px;color:var(--text-muted);line-height:1.6}
+.diary-t-row{
+  display:flex;align-items:flex-start;gap:10px;padding:10px 8px;border-radius:var(--r-xs);
+  cursor:pointer;transition:all .2s ease;border-left:3px solid transparent;margin-bottom:4px;
+}
+.diary-t-row:hover{background:rgba(94,158,132,.1);border-left-color:var(--primary-light)}
+.diary-t-row.sel{
+  background:var(--primary-pale);border-left-color:var(--primary);
+  border-radius:var(--r-xs);box-shadow:0 2px 8px rgba(94,158,132,.15);
+}
+.diary-t-icon{font-size:18px;flex-shrink:0;line-height:1.4}
+.diary-t-mid{min-width:0;flex:1}
+.diary-t-date{font-size:12px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:2px}
+.diary-t-preview{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-bottom:3px}
+.diary-t-mood{font-size:10px;font-weight:600;color:var(--primary);text-transform:capitalize;letter-spacing:.02em}
+.diary-t-empty{font-size:12px;color:var(--text-muted);line-height:1.6;padding:10px 4px}
 
 /* ═══════════════════════════════════════════
    CRISIS BANNER (FEATURE 12) — highest priority,
