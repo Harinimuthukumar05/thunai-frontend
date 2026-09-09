@@ -45,6 +45,51 @@ function journalDebugStatus() {
 }
 
 /**
+ * Manual test function to verify the timeline rendering works
+ * Usage: Call journalTestRender() in the browser console
+ */
+function journalTestRender() {
+  console.log('═══════════════════════════════════════════════════');
+  console.log('MANUAL TIMELINE RENDER TEST');
+  console.log('═══════════════════════════════════════════════════');
+  
+  // Check DOM element exists
+  const list = document.getElementById('diaryTimelineList');
+  if (!list) {
+    console.error('✗ FAILED: #diaryTimelineList element not found in DOM!');
+    return;
+  }
+  console.log('✓ #diaryTimelineList element found');
+  
+  // Check dependencies
+  if (!window.DateUtils) {
+    console.error('✗ FAILED: window.DateUtils is not available!');
+    return;
+  }
+  console.log('✓ window.DateUtils available');
+  
+  if (!window.DiaryStorage) {
+    console.error('✗ FAILED: window.DiaryStorage is not available!');
+    return;
+  }
+  console.log('✓ window.DiaryStorage available');
+  
+  // Check data
+  const entries = window.DiaryStorage.listEntries();
+  console.log(`✓ Got ${entries.length} entries from DiaryStorage`);
+  console.log('  Sample entries:', entries.slice(0, 3));
+  
+  // Try rendering
+  console.log('Calling journalRenderTimeline()...');
+  journalRenderTimeline();
+  
+  // Check result
+  const itemCount = list.children.length;
+  console.log(`✓ Timeline rendered with ${itemCount} items`);
+  console.log('═══════════════════════════════════════════════════');
+}
+
+/**
  * Sets the live "Sunday, August 2, 2026"-style date label at the
  * top of the journal editor. Re-derives from `new Date()` — never
  * hardcoded.
@@ -146,64 +191,104 @@ function journalBuildTimelineRow(entry) {
  */
 function journalRenderTimeline() {
   const list = document.getElementById('diaryTimelineList');
-  if (!list) return;
-  
-  // Get all entries from storage (only those with data)
-  const entries = window.DiaryStorage.listEntries();
-  
-  // Create a map of existing entries for quick lookup
-  const entryMap = {};
-  entries.forEach(e => {
-    if (e.date) entryMap[e.date] = e;
-  });
-
-  // Generate all last 30 days
-  const today = window.DateUtils.toISO();
-  const allDates = [];
-  for (let i = 0; i < 30; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    allDates.push(window.DateUtils.toISO(d));
+  if (!list) {
+    console.error('[journalRenderTimeline] Element #diaryTimelineList not found in DOM');
+    return;
   }
-
-  const yestD = new Date(); 
-  yestD.setDate(yestD.getDate() - 1);
-  const yesterday = window.DateUtils.toISO(yestD);
-
-  // Group all 30 days
-  const groups = { Today: [], Yesterday: [], Previous: [] };
-  allDates.forEach(dateStr => {
-    const entry = entryMap[dateStr] || { date: dateStr };
-    if (dateStr === today) {
-      groups.Today.push(entry);
-    } else if (dateStr === yesterday) {
-      groups.Yesterday.push(entry);
-    } else {
-      groups.Previous.push(entry);
+  
+  try {
+    console.log('[journalRenderTimeline] Starting timeline render...');
+    
+    // Verify dependencies
+    if (!window.DateUtils) {
+      console.error('[journalRenderTimeline] window.DateUtils not available');
+      list.innerHTML = '<p class="diary-t-empty">Error: DateUtils not loaded</p>';
+      return;
     }
-  });
-
-  // Render the timeline
-  list.innerHTML = '';
-  const heading = document.createElement('div');
-  heading.className = 'diary-t-heading';
-  heading.textContent = 'Last 30 Days';
-  list.appendChild(heading);
-
-  ['Today', 'Yesterday', 'Previous'].forEach(key => {
-    if (groups[key].length === 0) return;
-    groups[key].forEach(entry => {
-      const row = journalBuildTimelineRow(entry);
-      list.appendChild(row);
+    
+    if (!window.DiaryStorage) {
+      console.error('[journalRenderTimeline] window.DiaryStorage not available');
+      list.innerHTML = '<p class="diary-t-empty">Error: DiaryStorage not loaded</p>';
+      return;
+    }
+    
+    // Get all entries from storage
+    const entries = window.DiaryStorage.listEntries();
+    console.log(`[journalRenderTimeline] Got ${entries.length} entries from storage`);
+    
+    // Create a map of existing entries for quick lookup
+    const entryMap = {};
+    entries.forEach(e => {
+      if (e.date) entryMap[e.date] = e;
     });
-  });
+    console.log(`[journalRenderTimeline] Entry map has ${Object.keys(entryMap).length} dates`);
 
-  // Auto-scroll to selected entry if one is active
-  if (journalActiveDate) {
-    const activeRow = list.querySelector(`[data-date="${journalActiveDate}"]`);
-    if (activeRow && activeRow.scrollIntoView) {
-      activeRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Generate all last 30 days
+    const today = window.DateUtils.toISO();
+    console.log(`[journalRenderTimeline] Today's date: ${today}`);
+    
+    const allDates = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const isoDate = window.DateUtils.toISO(d);
+      allDates.push(isoDate);
     }
+    console.log(`[journalRenderTimeline] Generated ${allDates.length} dates`);
+
+    const yestD = new Date(); 
+    yestD.setDate(yestD.getDate() - 1);
+    const yesterday = window.DateUtils.toISO(yestD);
+    console.log(`[journalRenderTimeline] Yesterday's date: ${yesterday}`);
+
+    // Group all 30 days
+    const groups = { Today: [], Yesterday: [], Previous: [] };
+    allDates.forEach(dateStr => {
+      const entry = entryMap[dateStr] || { date: dateStr };
+      if (dateStr === today) {
+        groups.Today.push(entry);
+      } else if (dateStr === yesterday) {
+        groups.Yesterday.push(entry);
+      } else {
+        groups.Previous.push(entry);
+      }
+    });
+    
+    console.log(`[journalRenderTimeline] Groups: Today=${groups.Today.length}, Yesterday=${groups.Yesterday.length}, Previous=${groups.Previous.length}`);
+
+    // Render the timeline
+    list.innerHTML = '';
+    
+    const heading = document.createElement('div');
+    heading.className = 'diary-t-heading';
+    heading.textContent = 'Last 30 Days';
+    list.appendChild(heading);
+
+    let totalRendered = 0;
+    ['Today', 'Yesterday', 'Previous'].forEach(key => {
+      if (groups[key].length === 0) {
+        console.log(`[journalRenderTimeline] Skipping ${key} - no dates`);
+        return;
+      }
+      groups[key].forEach(entry => {
+        const row = journalBuildTimelineRow(entry);
+        list.appendChild(row);
+        totalRendered++;
+      });
+    });
+    
+    console.log(`[journalRenderTimeline] Successfully rendered ${totalRendered} timeline entries`);
+
+    // Auto-scroll to selected entry if one is active
+    if (journalActiveDate) {
+      const activeRow = list.querySelector(`[data-date="${journalActiveDate}"]`);
+      if (activeRow && activeRow.scrollIntoView) {
+        activeRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  } catch (e) {
+    console.error('[journalRenderTimeline] Exception:', e);
+    list.innerHTML = `<p class="diary-t-empty">Error rendering timeline: ${e.message}</p>`;
   }
 }
 
@@ -441,40 +526,57 @@ function journalOnInputCheck(text) {
  * animations, and attaches the journal-input crisis listener.
  */
 async function initJournal() {
+  console.log('[initJournal] ✓ Starting initialization...');
+  
   journalActiveDate = window.DateUtils.toISO();
 
+  // STEP 1: Load all user journals from backend
   if (window.JournalStorage && typeof getActiveUserId === 'function') {
     const activeUser = getActiveUserId();
     if (activeUser) {
       try {
-        console.log(`[initJournal] Loading journals for user: ${activeUser}`);
+        console.log(`[initJournal] ✓ STEP 1: Loading journals for user: ${activeUser}`);
         const userData = await window.JournalStorage.getUser(activeUser);
         if (userData && Array.isArray(userData.journals)) {
           window.JournalStorage._journals = userData.journals;
-          console.log(`[initJournal] Loaded ${userData.journals.length} journals`);
+          console.log(`[initJournal] ✓ STEP 1: Loaded ${userData.journals.length} journals from backend`);
+        } else {
+          console.warn('[initJournal] ✗ STEP 1: userData.journals is not an array:', userData);
         }
       } catch (e) {
-        console.warn('initJournal: failed to load journal user data', e);
+        console.error('[initJournal] ✗ STEP 1: Error loading journals:', e.message);
       }
+    } else {
+      console.warn('[initJournal] ✗ STEP 1: No active user found');
     }
   } else {
-    console.warn('[initJournal] JournalStorage or getActiveUserId not available');
+    console.warn('[initJournal] ✗ STEP 1: JournalStorage or getActiveUserId not available');
   }
 
+  // STEP 2: Render the date label
   journalRenderDateLabel();
+  console.log('[initJournal] ✓ STEP 2: Date label rendered');
   
-  // First render the timeline with ALL 30 days (including empty dates)
-  console.log('[initJournal] Rendering timeline...');
+  // STEP 3: Render the timeline with ALL 30 days
+  console.log('[initJournal] ✓ STEP 3: About to render timeline...');
   journalRenderTimeline();
+  console.log('[initJournal] ✓ STEP 3: Timeline rendered');
+  
+  // STEP 4: Render date selector
   journalRenderDateSelector();
+  console.log('[initJournal] ✓ STEP 4: Date selector rendered');
 
-  // Then load today's entry if it exists
+  // STEP 5: Load today's entry if it exists
   const existingToday = window.DiaryStorage.loadEntry(journalActiveDate);
   if (existingToday && existingToday.content) {
-    console.log('[initJournal] Loading today\'s entry');
+    console.log('[initJournal] ✓ STEP 5: Loading today\'s entry');
     journalLoadDate(journalActiveDate);
+  } else {
+    console.log('[initJournal] ✓ STEP 5: No entry for today (will start blank)');
   }
 
+  // STEP 6: Wire up event listeners
+  console.log('[initJournal] ✓ STEP 6: Wiring up event listeners...');
   const newBtn = document.getElementById('journalNewBtn');
   const searchBtn = document.getElementById('journalSearchBtn');
   const refreshBtn = document.getElementById('journalRefreshBtn');
@@ -494,13 +596,21 @@ async function initJournal() {
   const ta = document.getElementById('journalTf');
   if (ta) ta.addEventListener('input', () => journalOnInputCheck(ta.value));
 
-  // Start auto-refresh to sync timeline with backend (every 60 seconds)
+  // STEP 7: Start auto-refresh to sync timeline with backend (every 60 seconds)
   journalStartAutoRefresh(60000);
+  console.log('[initJournal] ✓ STEP 7: Auto-refresh started');
 
+  // STEP 8: Apply emoji animation
   if (window.EmojiAnimation) window.EmojiAnimation.apply();
+  console.log('[initJournal] ✓ STEP 8: Emoji animation applied');
 
   // keep the current-date label correct even if the app is left open overnight
   setInterval(journalRenderDateLabel, 60 * 1000);
+  
+  // FINAL: Debugging output
+  console.log('[initJournal] ✓✓✓ INITIALIZATION COMPLETE ✓✓✓');
+  console.log('[initJournal] Run journalDebugStatus() in console to check timeline data');
+  console.log('[initJournal] Timeline element #diaryTimelineList contains:', document.getElementById('diaryTimelineList')?.children.length || 0, 'items');
 }
 
 document.addEventListener('DOMContentLoaded', initJournal);
