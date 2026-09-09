@@ -20,9 +20,28 @@ let journalActiveDate = null;
 let journalRefreshInterval = null;
 function journalStartAutoRefresh(intervalMs = 60000) {
   if (journalRefreshInterval) clearInterval(journalRefreshInterval);
-  journalRefreshInterval = setInterval(() => {
-    journalRefreshFromBackend();
+  journalRefreshInterval = setInterval(async () => {
+    try {
+      await journalRefreshFromBackend();
+    } catch (e) {
+      console.error('[journalStartAutoRefresh] Error during auto-refresh:', e);
+    }
   }, intervalMs);
+}
+
+/**
+ * Debug helper to check the current state of the timeline data
+ */
+function journalDebugStatus() {
+  const data = {
+    activeDate: journalActiveDate,
+    userId: typeof getActiveUserId === 'function' ? getActiveUserId() : 'unknown',
+    journalsInCache: window.JournalStorage ? window.JournalStorage._journals.length : 0,
+    entriesFromStorage: window.DiaryStorage ? window.DiaryStorage.listEntries().length : 0,
+    allEntries: window.DiaryStorage ? window.DiaryStorage.listEntries() : []
+  };
+  console.log('[journalDebugStatus]', JSON.stringify(data, null, 2));
+  return data;
 }
 
 /**
@@ -67,8 +86,8 @@ function journalRenderDateSelector() {
 
 /**
  * Builds one row of the Diary Timeline list for a given entry.
- * Displays mood emoji, date, preview text, and mood label as a
- * journal-like entry that users can click to view full entry.
+ * Shows mood emoji if entry exists, or a "+" icon for empty dates.
+ * Allows clicking on any date (even empty) to view/create an entry.
  * @param {object} entry {date, title, content, mood, ...}
  * @returns {HTMLElement}
  */
@@ -79,23 +98,40 @@ function journalBuildTimelineRow(entry) {
   if (entry.date === journalActiveDate) row.classList.add('sel');
 
   const moodIcons = { Happy: '😊', Calm: '😌', Anxious: '😟', Sad: '😔', Tired: '😴', Frustrated: '😡' };
-  const icon = moodIcons[entry.mood] || '📝';
   
-  // Get preview text from content
-  const preview = (entry.content || '').split(/[.!?\n]/)[0].slice(0, 55) || 'No entry text';
-  const moodLabel = entry.mood || 'Neutral';
+  // Check if entry has content
+  const hasContent = entry.content && entry.content.trim().length > 0;
   
-  // Get relative date label
-  const relativeDate = window.DateUtils ? window.DateUtils.relativeLabel(entry.date) : entry.date;
-  
-  row.innerHTML = `
-    <span class="diary-t-icon">${icon}</span>
-    <div class="diary-t-mid">
-      <div class="diary-t-date">${relativeDate}</div>
-      <div class="diary-t-preview">${preview}${preview.length >= 55 ? '…' : ''}</div>
-      <div class="diary-t-mood">${moodLabel}${entry.intensity ? ` · Intensity: ${entry.intensity}/10` : ''}</div>
-    </div>
-  `;
+  if (hasContent) {
+    // Entry exists - show mood emoji and content preview
+    const icon = moodIcons[entry.mood] || '📝';
+    const preview = entry.content.split(/[.!?\n]/)[0].slice(0, 55) || 'No entry text';
+    const moodLabel = entry.mood || 'Neutral';
+    const relativeDate = window.DateUtils ? window.DateUtils.relativeLabel(entry.date) : entry.date;
+    
+    row.innerHTML = `
+      <span class="diary-t-icon">${icon}</span>
+      <div class="diary-t-mid">
+        <div class="diary-t-date">${relativeDate}</div>
+        <div class="diary-t-preview">${preview}${preview.length >= 55 ? '…' : ''}</div>
+        <div class="diary-t-mood">${moodLabel}${entry.intensity ? ` · Intensity: ${entry.intensity}/10` : ''}</div>
+      </div>
+    `;
+    row.classList.add('has-entry');
+  } else {
+    // Empty entry - show add button icon and "Add entry" text
+    const relativeDate = window.DateUtils ? window.DateUtils.relativeLabel(entry.date) : entry.date;
+    
+    row.innerHTML = `
+      <span class="diary-t-icon">➕</span>
+      <div class="diary-t-mid">
+        <div class="diary-t-date">${relativeDate}</div>
+        <div class="diary-t-preview">Add entry</div>
+        <div class="diary-t-mood">No entry yet</div>
+      </div>
+    `;
+    row.classList.add('empty-entry');
+  }
   
   row.addEventListener('click', () => journalLoadDate(entry.date));
   row.style.cursor = 'pointer';
@@ -104,34 +140,50 @@ function journalBuildTimelineRow(entry) {
 }
 
 /**
- * Re-renders the whole Diary Timeline list from storage, grouped
- * under Today / Yesterday / Previous Dates, all inside a
- * "Last 30 Days" heading per FEATURE 6.
+ * Re-renders the whole Diary Timeline list from storage, showing
+ * all last 30 days (including empty dates) grouped under
+ * Today / Yesterday / Previous Dates heading.
  */
 function journalRenderTimeline() {
   const list = document.getElementById('diaryTimelineList');
   if (!list) return;
+  
+  // Get all entries from storage (only those with data)
   const entries = window.DiaryStorage.listEntries();
-
-  if (entries.length === 0) {
-    list.innerHTML = `<p class="diary-t-empty">No diary entries yet. Write something below and hit Save.</p>`;
-    return;
-  }
-
-  const today = window.DateUtils.toISO();
-  const yestD = new Date(); yestD.setDate(yestD.getDate() - 1);
-  const yesterday = window.DateUtils.toISO(yestD);
-
-  const groups = { Today: [], Yesterday: [], Previous: [] };
+  
+  // Create a map of existing entries for quick lookup
+  const entryMap = {};
   entries.forEach(e => {
-    if (e.date === today) groups.Today.push(e);
-    else if (e.date === yesterday) groups.Yesterday.push(e);
-    else groups.Previous.push(e);
+    if (e.date) entryMap[e.date] = e;
   });
 
-  // Sort Previous dates in descending order (newest first)
-  groups.Previous.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  // Generate all last 30 days
+  const today = window.DateUtils.toISO();
+  const allDates = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    allDates.push(window.DateUtils.toISO(d));
+  }
 
+  const yestD = new Date(); 
+  yestD.setDate(yestD.getDate() - 1);
+  const yesterday = window.DateUtils.toISO(yestD);
+
+  // Group all 30 days
+  const groups = { Today: [], Yesterday: [], Previous: [] };
+  allDates.forEach(dateStr => {
+    const entry = entryMap[dateStr] || { date: dateStr };
+    if (dateStr === today) {
+      groups.Today.push(entry);
+    } else if (dateStr === yesterday) {
+      groups.Yesterday.push(entry);
+    } else {
+      groups.Previous.push(entry);
+    }
+  });
+
+  // Render the timeline
   list.innerHTML = '';
   const heading = document.createElement('div');
   heading.className = 'diary-t-heading';
@@ -159,6 +211,7 @@ function journalRenderTimeline() {
  * Loads a given date's entry into the big journal editor + mood
  * log controls, and highlights it in the timeline. Displays it like
  * a real journal page with formatted date, mood indicator, and content.
+ * Works for both existing entries and empty dates (allowing user to create new).
  * @param {string} isoDate
  */
 function journalLoadDate(isoDate) {
@@ -174,10 +227,9 @@ function journalLoadDate(isoDate) {
     const isToday = isoDate === window.DateUtils.toISO();
     const dateObj = window.DateUtils.fromISO(isoDate);
     const longDate = window.DateUtils.formatLong(dateObj);
-    const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
     
     // Format as: "Sunday, September 8, 2026"
-    lbl.textContent = isToday ? longDate : longDate;
+    lbl.textContent = longDate;
     lbl.title = `Date: ${isoDate}`;
   }
 
@@ -187,9 +239,14 @@ function journalLoadDate(isoDate) {
   });
   
   const intSlider = document.getElementById('intSlider');
-  if (intSlider && entry.intensity) {
-    intSlider.value = entry.intensity;
-    if (typeof updateInt === 'function') updateInt(entry.intensity);
+  if (intSlider) {
+    if (entry.intensity) {
+      intSlider.value = entry.intensity;
+    } else {
+      // Default to 6 for empty entries
+      intSlider.value = 6;
+    }
+    if (typeof updateInt === 'function') updateInt(intSlider.value);
   }
   
   const noteTf = document.getElementById('moodNoteTf');
@@ -225,14 +282,47 @@ function journalGetSelectedMood() {
  */
 async function journalRefreshFromBackend() {
   const userId = typeof getActiveUserId === 'function' ? getActiveUserId() : 'User';
-  if (window.JournalStorage && typeof window.JournalStorage.getUser === 'function') {
-    const data = await window.JournalStorage.getUser(userId);
-    if (data && Array.isArray(data.journals)) {
-      window.JournalStorage._journals = data.journals;
+  const refreshBtn = document.getElementById('journalRefreshBtn');
+  
+  try {
+    // Show loading state
+    if (refreshBtn) {
+      const oldText = refreshBtn.innerHTML;
+      refreshBtn.innerHTML = '⏳ Loading...';
+      refreshBtn.disabled = true;
+    }
+
+    console.log(`[journalRefreshFromBackend] Refreshing data for user: ${userId}`);
+    
+    if (window.JournalStorage && typeof window.JournalStorage.getUser === 'function') {
+      const data = await window.JournalStorage.getUser(userId);
+      if (data && Array.isArray(data.journals)) {
+        window.JournalStorage._journals = data.journals;
+        console.log(`[journalRefreshFromBackend] Loaded ${data.journals.length} journals`);
+      }
+    }
+    
+    journalRenderTimeline();
+    journalRenderDateSelector();
+    
+    // Show success state
+    if (refreshBtn) {
+      refreshBtn.innerHTML = '✓ Refreshed';
+      setTimeout(() => {
+        refreshBtn.innerHTML = '🔄 Refresh';
+        refreshBtn.disabled = false;
+      }, 1500);
+    }
+  } catch (e) {
+    console.error('[journalRefreshFromBackend] Error:', e);
+    if (refreshBtn) {
+      refreshBtn.innerHTML = '❌ Error';
+      setTimeout(() => {
+        refreshBtn.innerHTML = '🔄 Refresh';
+        refreshBtn.disabled = false;
+      }, 2000);
     }
   }
-  journalRenderTimeline();
-  journalRenderDateSelector();
 }
 
 function saveJournalEntry() {
@@ -295,6 +385,7 @@ function newJournalEntry() {
   if (ta) ta.value = '';
   journalActiveDate = window.DateUtils.toISO();
   journalRenderDateLabel();
+  journalRenderTimeline(); // Update timeline to highlight today
   journalRenderDateSelector();
   if (typeof clearMood === 'function') clearMood();
 }
@@ -356,30 +447,41 @@ async function initJournal() {
     const activeUser = getActiveUserId();
     if (activeUser) {
       try {
+        console.log(`[initJournal] Loading journals for user: ${activeUser}`);
         const userData = await window.JournalStorage.getUser(activeUser);
         if (userData && Array.isArray(userData.journals)) {
           window.JournalStorage._journals = userData.journals;
+          console.log(`[initJournal] Loaded ${userData.journals.length} journals`);
         }
       } catch (e) {
         console.warn('initJournal: failed to load journal user data', e);
       }
     }
+  } else {
+    console.warn('[initJournal] JournalStorage or getActiveUserId not available');
   }
 
   journalRenderDateLabel();
   
-  // First render the timeline with all loaded entries
+  // First render the timeline with ALL 30 days (including empty dates)
+  console.log('[initJournal] Rendering timeline...');
   journalRenderTimeline();
   journalRenderDateSelector();
 
+  // Then load today's entry if it exists
   const existingToday = window.DiaryStorage.loadEntry(journalActiveDate);
-  if (existingToday) journalLoadDate(journalActiveDate);
+  if (existingToday && existingToday.content) {
+    console.log('[initJournal] Loading today\'s entry');
+    journalLoadDate(journalActiveDate);
+  }
 
   const newBtn = document.getElementById('journalNewBtn');
   const searchBtn = document.getElementById('journalSearchBtn');
+  const refreshBtn = document.getElementById('journalRefreshBtn');
   const saveBtn = document.getElementById('journalSaveBtn');
   if (newBtn) newBtn.addEventListener('click', newJournalEntry);
   if (searchBtn) searchBtn.addEventListener('click', searchJournalEntries);
+  if (refreshBtn) refreshBtn.addEventListener('click', journalRefreshFromBackend);
   if (saveBtn) saveBtn.addEventListener('click', saveJournalEntry);
 
   const select = document.getElementById('journalDateSelect');

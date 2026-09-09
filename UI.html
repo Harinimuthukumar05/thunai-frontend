@@ -685,6 +685,7 @@ input[type=range].slider::-webkit-slider-thumb{-webkit-appearance:none;width:18p
    Reuses .ai-reflect / .ai-reflect-side box styling so the
    panel keeps the exact same footprint the AI Reflection box had.
    Enhanced with mood display and better styling for journal experience.
+   Now shows all last 30 days including empty dates.
 ═══════════════════════════════════════════ */
 .diary-timeline-panel{overflow-y:auto}
 .diary-t-heading{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin:10px 0 6px}
@@ -698,6 +699,9 @@ input[type=range].slider::-webkit-slider-thumb{-webkit-appearance:none;width:18p
   background:var(--primary-pale);border-left-color:var(--primary);
   border-radius:var(--r-xs);box-shadow:0 2px 8px rgba(94,158,132,.15);
 }
+.diary-t-row.empty-entry{opacity:.7;border-left-color:var(--border)}
+.diary-t-row.empty-entry:hover{opacity:1}
+.diary-t-row.has-entry .diary-t-icon{color:var(--primary)}
 .diary-t-icon{font-size:18px;flex-shrink:0;line-height:1.4}
 .diary-t-mid{min-width:0;flex:1}
 .diary-t-date{font-size:12px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:2px}
@@ -1421,6 +1425,7 @@ input[type=range].slider::-webkit-slider-thumb{-webkit-appearance:none;width:18p
         <div class="j-toolbar">
           <button class="j-btn active" id="journalNewBtn">✏️ New Entry</button>
           <button class="j-btn" id="journalSearchBtn">🔍 Search</button>
+          <button class="j-btn" id="journalRefreshBtn">🔄 Refresh</button>
           <button class="j-btn" style="margin-left:auto" id="journalSaveBtn" type="button" onclick="saveJournalEntry(); return false;">💾 Save</button>
         </div>
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px">
