@@ -525,8 +525,42 @@ function journalOnInputCheck(text) {
  * timeline, wires up the toolbar buttons and mood-emoji
  * animations, and attaches the journal-input crisis listener.
  */
+/**
+ * Waits for required dependencies to be available before rendering
+ * Retries up to 5 times with 100ms delays if dependencies not ready
+ */
+async function journalWaitForDependencies() {
+  let attempts = 0;
+  const maxAttempts = 5;
+  
+  while (attempts < maxAttempts) {
+    if (window.DateUtils && window.DiaryStorage) {
+      console.log(`[journalWaitForDependencies] ✓ Dependencies ready (attempt ${attempts + 1})`);
+      return true;
+    }
+    attempts++;
+    console.log(`[journalWaitForDependencies] Waiting for dependencies (attempt ${attempts}/${maxAttempts})...`);
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  console.error('[journalWaitForDependencies] ✗ Dependencies not available after 5 attempts');
+  return false;
+}
+
 async function initJournal() {
   console.log('[initJournal] ✓ Starting initialization...');
+  
+  // WAIT: Make sure all dependencies are loaded before proceeding
+  const depsReady = await journalWaitForDependencies();
+  if (!depsReady) {
+    console.error('[initJournal] ✗ FAILED: Required dependencies not available!');
+    const list = document.getElementById('diaryTimelineList');
+    if (list) {
+      list.innerHTML = '<p class="diary-t-empty">Error: Could not load required libraries. Please refresh the page.</p>';
+    }
+    return;
+  }
+  console.log('[initJournal] ✓ All dependencies verified');
   
   journalActiveDate = window.DateUtils.toISO();
 
