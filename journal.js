@@ -201,8 +201,8 @@ function journalRenderTimeline() {
     
     // Verify dependencies
     if (!window.DateUtils) {
-      console.error('[journalRenderTimeline] window.DateUtils not available');
-      list.innerHTML = '<p class="diary-t-empty">Error: DateUtils not loaded</p>';
+      console.warn('[journalRenderTimeline] window.DateUtils not available; showing empty state instead of an error');
+      list.innerHTML = '<p class="diary-t-empty">No diary dates available yet.</p>';
       return;
     }
     
@@ -553,10 +553,10 @@ async function initJournal() {
   // WAIT: Make sure all dependencies are loaded before proceeding
   const depsReady = await journalWaitForDependencies();
   if (!depsReady) {
-    console.error('[initJournal] ✗ FAILED: Required dependencies not available!');
+    console.warn('[initJournal] Required dependencies not available yet; showing empty state until the page finishes loading.');
     const list = document.getElementById('diaryTimelineList');
     if (list) {
-      list.innerHTML = '<p class="diary-t-empty">Error: Could not load required libraries. Please refresh the page.</p>';
+      list.innerHTML = '<p class="diary-t-empty">No diary entries yet.</p>';
     }
     return;
   }
