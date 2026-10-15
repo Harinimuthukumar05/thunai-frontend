@@ -817,18 +817,23 @@ input[type=range].slider::-webkit-slider-thumb{-webkit-appearance:none;width:18p
     </div>
   </nav>
 
-  <!-- illustration + quote card -->
-  <div class="sidebar-card">
-    <div class="sidebar-illus">
-      <div class="illus-figure">🧘‍♀️</div>
-      <div class="illus-leaves">
-        <span class="leaf">🌿</span>
-        <span class="leaf">🍃</span>
-      </div>
-    </div>
-    <div class="sidebar-quote">
-      <p>It's okay not to be okay. You're doing your best.</p>
-      <div class="heart">♥</div>
+  <!-- Thulir — Grow Your Inner Plant
+       The 🧘‍♀️ illustration is replaced by the Thulir plant widget.
+       The rest of the sidebar (logo, nav, branding) is unchanged.
+       thulir.js renders all content inside this div on load. -->
+  <div id="thulirSidebarWidget"
+    style="margin-top:auto;margin-bottom:20px;border-radius:var(--r);
+           overflow:hidden;box-shadow:var(--shadow);background:var(--card);"
+    role="complementary" aria-label="Thulir plant widget">
+    <!-- Placeholder shown before thulir.js initialises -->
+    <div style="
+      background:linear-gradient(160deg,#e8f0eb 0%,#ddeae2 100%);
+      padding:20px;min-height:160px;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:8px;border-radius:var(--r);
+    ">
+      <div style="font-size:36px;opacity:.6;">🌱</div>
+      <div style="font-size:11px;color:var(--text-muted);">Loading Thulir…</div>
     </div>
   </div>
 </aside>
@@ -1841,6 +1846,11 @@ function initCharts(page){
 window.addEventListener('load',()=>{
   document.getElementById('page-chat').style.display='flex';
   // renderPersistedChatHistory();  // DISABLED: Fresh chat on every page refresh
+
+  // Thulir — initialise after all modules are loaded
+  if (window.Thulir && typeof window.Thulir.init === 'function') {
+    window.Thulir.init().catch(e => console.warn('Thulir init error:', e));
+  }
 });
 </script>
 
@@ -1864,5 +1874,10 @@ window.addEventListener('load',()=>{
 <script src="Crisisdetection.js"></script>
 <script src="journal.js"></script>
 <script src="Chatoffline.js"></script>
+<!-- Thulir — Grow Your Inner Plant (loaded last; depends on goto/getApiBase/DM Sans) -->
+<script src="thulir_grounding.js"></script>
+<script src="thulir_gratitude.js"></script>
+<script src="thulir_shimmer.js"></script>
+<script src="thulir.js"></script>
 </body>
 </html>
