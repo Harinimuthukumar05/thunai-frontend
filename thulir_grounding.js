@@ -31,12 +31,15 @@
 
   /* ─── Phase configuration ─── */
   const PHASES = [
-    { name: 'inhale', label: 'Breathe In',  durationMs: 4000, scale: 1.55, easing: 'ease-in'  },
-    { name: 'hold',   label: 'Hold gently', durationMs: 4000, scale: 1.55, easing: 'linear'   },
+    // Inhale: orb SHRINKS inward (drawing air in = circle contracts)
+    { name: 'inhale', label: 'Breathe In',  durationMs: 4000, scale: 0.70, easing: 'ease-in'  },
+    // Hold: orb stays at the contracted size
+    { name: 'hold',   label: 'Hold gently', durationMs: 4000, scale: 0.70, easing: 'linear'   },
+    // Exhale: orb EXPANDS outward (releasing air = circle grows back)
     { name: 'exhale', label: 'Breathe Out', durationMs: 6000, scale: 1.0,  easing: 'ease-out' },
   ];
   const TARGET_CYCLES  = 3;
-  const ORB_BASE_SCALE = 1.0;
+  const ORB_BASE_SCALE = 1.0;  // resting size — the orb starts here and returns here after each exhale
 
   /* ─── Module state ─── */
   let _onComplete    = null;
