@@ -7,6 +7,16 @@
    Completion is triggered after exactly 3 full cycles.
    The user may exit at any time with no penalty.
 
+   Performance fix (Oct 2026):
+   ─ Root cause of lag: CSS transition on the orb + rAF loop
+     writing countdown text every frame forced the browser to
+     flush style recalculation ~60×/s while the transition ran.
+   ─ Fix: orb animation now runs entirely via Web Animations API
+     (compositor-threaded). The rAF loop only updates the cheap
+     countdown textContent — no layout recalculation triggered.
+   ─ Pause/resume now freezes the animation at its current
+     rendered position and resumes from there.
+
    This module is completely independent of the existing
    breathing exercise in index.html — it uses its own state
    variables and DOM elements (created and destroyed at runtime).
@@ -21,26 +31,27 @@
 
   /* ─── Phase configuration ─── */
   const PHASES = [
-    { name: 'inhale', label: 'Breathe In',  durationMs: 4000, scale: 1.55 },
-    { name: 'hold',   label: 'Hold gently', durationMs: 4000, scale: 1.55 },
-    { name: 'exhale', label: 'Breathe Out', durationMs: 6000, scale: 1.0  },
+    { name: 'inhale', label: 'Breathe In',  durationMs: 4000, scale: 1.55, easing: 'ease-in'  },
+    { name: 'hold',   label: 'Hold gently', durationMs: 4000, scale: 1.55, easing: 'linear'   },
+    { name: 'exhale', label: 'Breathe Out', durationMs: 6000, scale: 1.0,  easing: 'ease-out' },
   ];
-  const TARGET_CYCLES = 3;
+  const TARGET_CYCLES  = 3;
   const ORB_BASE_SCALE = 1.0;
-  const ORB_PEAK_SCALE = 1.55;
 
-  /* ─── State ─── */
-  let _onComplete = null;
-  let _onExit = null;
-  let _overlay = null;
-  let _panel = null;
-  let _phaseIndex = 0;
-  let _cycleCount = 0;
-  let _running = false;
-  let _paused = false;
-  let _rafId = null;
-  let _phaseStartTs = 0;
-  let _elapsedAtPause = 0;
+  /* ─── Module state ─── */
+  let _onComplete    = null;
+  let _onExit        = null;
+  let _overlay       = null;
+  let _panel         = null;
+  let _phaseIndex    = 0;
+  let _cycleCount    = 0;
+  let _running       = false;
+  let _paused        = false;
+  let _rafId         = null;
+  let _phaseStartTs  = 0;      // performance.now() when current phase began (or resumed)
+  let _elapsedAtPause = 0;     // ms elapsed before the last pause
+  let _orbAnim       = null;   // current Web Animations API Animation object
+  let _currentScale  = ORB_BASE_SCALE; // tracked orb scale for resume continuity
 
   /* ─── Helpers ─── */
   function _esc(s) {
@@ -51,6 +62,63 @@
   function _prefersReducedMotion() {
     return window.matchMedia &&
            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /* ─── Orb animation (Web Animations API) ─── */
+  /*
+   * We drive the breathing orb entirely through the Web Animations API
+   * instead of CSS transitions. This keeps the animation on the
+   * compositor thread and decouples it from the rAF loop that updates
+   * the countdown text — eliminating the forced-reflow jank.
+   */
+  function _animateOrb(fromScale, toScale, durationMs, easingFn) {
+    const orb = document.getElementById('tgOrb');
+    if (!orb || _prefersReducedMotion()) {
+      _currentScale = toScale;
+      return null;
+    }
+    const anim = orb.animate(
+      [
+        { transform: `scale(${fromScale})` },
+        { transform: `scale(${toScale})`   },
+      ],
+      {
+        duration: durationMs,
+        easing:   easingFn,
+        fill:     'forwards',
+      }
+    );
+    _currentScale = toScale; // will be the final value when animation finishes
+    return anim;
+  }
+
+  /* Cancel any currently running orb animation */
+  function _cancelOrbAnim() {
+    if (_orbAnim) {
+      try {
+        // Commit the current position before cancelling so the orb
+        // stays at whatever scale it reached rather than snapping back.
+        _orbAnim.commitStyles();
+        _orbAnim.cancel();
+      } catch (_) { /* commitStyles may throw if element is detached */ }
+      _orbAnim = null;
+    }
+  }
+
+  /* Read the orb's current rendered scale (for smooth resume) */
+  function _readOrbScale() {
+    const orb = document.getElementById('tgOrb');
+    if (!orb) return ORB_BASE_SCALE;
+    try {
+      // matrix(a,b,c,d,tx,ty) — scale is 'a' for uniform scale
+      const style  = window.getComputedStyle(orb);
+      const matrix = style.transform || style.webkitTransform || '';
+      if (matrix && matrix !== 'none') {
+        const m = matrix.match(/matrix\(([^,]+)/);
+        if (m) return parseFloat(m[1]);
+      }
+    } catch (_) {}
+    return _currentScale;
   }
 
   /* ─── DOM builders ─── */
@@ -105,23 +173,25 @@
           position:absolute;inset:0;border-radius:50%;
           border:2px dashed rgba(94,158,132,.3);
         "></div>
-        <!-- breathing orb -->
+
+        <!-- breathing orb — animation is driven by Web Animations API,
+             NOT by the rAF loop, so no layout cost per frame -->
         <div id="tgOrb" style="
           width:110px;height:110px;border-radius:50%;
           background:radial-gradient(circle at 32% 28%,#c4e2d4 0%,#5E9E84 55%,#3d7a60 100%);
           box-shadow:0 0 40px rgba(94,158,132,.4),0 0 80px rgba(94,158,132,.15),
                      inset 0 0 20px rgba(255,255,255,.3);
           transform:scale(1);
-          transition:transform .5s ease;
           will-change:transform;
           display:flex;align-items:center;justify-content:center;
         ">
           <div id="tgOrbText" style="
             text-align:center;color:#fff;
             text-shadow:0 1px 3px rgba(0,0,0,.2);
+            pointer-events:none;
           ">
             <div id="tgPhaseLabel" style="font-size:13px;font-weight:600;">Ready</div>
-            <div id="tgCountdown" style="font-size:22px;font-weight:700;margin-top:2px;">—</div>
+            <div id="tgCountdown"  style="font-size:22px;font-weight:700;margin-top:2px;">—</div>
           </div>
         </div>
       </div>
@@ -178,10 +248,11 @@
       const style = document.createElement('style');
       style.id = 'tgStyles';
       style.textContent = `
-        @keyframes tgFadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes tgFadeIn  { from{opacity:0} to{opacity:1} }
         @keyframes tgSlideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
         #tgStartBtn:hover { background:#4a7a64 !important; }
         #tgDoneBtn:hover  { background:#4a7a64 !important; }
+        #tgPauseBtn:not(:disabled):hover { background:#d5ebe0 !important; }
       `;
       document.head.appendChild(style);
     }
@@ -191,45 +262,66 @@
   }
 
   /* ─── Exercise logic ─── */
-  function _setPhase(index) {
-    _phaseIndex = index % PHASES.length;
+
+  /*
+   * _setPhase(index, fromScale)
+   *
+   * Starts a new breathing phase. Launches the orb animation
+   * using the Web Animations API from `fromScale` to the phase's
+   * target scale over the full phase duration.
+   *
+   * The rAF loop (_tick) handles ONLY the countdown text and
+   * phase-end detection — it does not touch orb styles.
+   */
+  function _setPhase(index, fromScale) {
+    _phaseIndex     = index % PHASES.length;
     _elapsedAtPause = 0;
-    _phaseStartTs = performance.now();
+    _phaseStartTs   = performance.now();
 
     const phase = PHASES[_phaseIndex];
-    const orb = document.getElementById('tgOrb');
     const label = document.getElementById('tgPhaseLabel');
-    if (orb && !_prefersReducedMotion()) {
-      orb.style.transform = `scale(${phase.scale})`;
-    }
     if (label) label.textContent = phase.label;
+
+    /* Cancel any previous orb animation cleanly */
+    _cancelOrbAnim();
+
+    /* Start the new orb animation (compositor-threaded, no rAF cost) */
+    const start = (fromScale !== undefined) ? fromScale : _currentScale;
+    _orbAnim = _animateOrb(start, phase.scale, phase.durationMs, phase.easing);
   }
 
+  /*
+   * _tick(now)
+   *
+   * rAF callback — only updates the countdown text and checks
+   * whether the current phase has elapsed. It NEVER touches
+   * orb transform/style, so there is no forced layout reflow.
+   */
   function _tick(now) {
     if (!_running || _paused) return;
 
-    const phase = PHASES[_phaseIndex];
+    const phase   = PHASES[_phaseIndex];
     const elapsed = _elapsedAtPause + (now - _phaseStartTs);
-    const progress = Math.min(elapsed / phase.durationMs, 1);
-
-    /* countdown display */
     const remaining = Math.max(0, Math.ceil((phase.durationMs - elapsed) / 1000));
+
+    /* Update countdown — cheap textContent write, no layout flush */
     const countdown = document.getElementById('tgCountdown');
     if (countdown) countdown.textContent = remaining + 's';
 
-    if (progress >= 1) {
-      /* advance to next phase */
+    if (elapsed >= phase.durationMs) {
+      /* Phase complete — advance */
       const nextIndex = _phaseIndex + 1;
       if (nextIndex >= PHASES.length) {
-        /* completed one full cycle */
+        /* End of one full cycle */
         _cycleCount++;
         _updateCycleDots();
         if (_cycleCount >= TARGET_CYCLES) {
           _showComplete();
-          return;
+          return; // stop the rAF loop
         }
       }
-      _setPhase(nextIndex);
+      /* Start next phase from the previous phase's end scale */
+      _setPhase(nextIndex, PHASES[_phaseIndex].scale);
     }
 
     _rafId = requestAnimationFrame(_tick);
@@ -238,9 +330,7 @@
   function _updateCycleDots() {
     for (let i = 0; i < TARGET_CYCLES; i++) {
       const dot = document.getElementById(`tgDot${i}`);
-      if (dot) {
-        dot.style.background = i < _cycleCount ? '#5E9E84' : '#E0DDD6';
-      }
+      if (dot) dot.style.background = i < _cycleCount ? '#5E9E84' : '#E0DDD6';
     }
     const lbl = document.getElementById('tgCycleLabel');
     if (lbl) lbl.textContent = `${_cycleCount} / ${TARGET_CYCLES} cycles`;
@@ -249,16 +339,18 @@
   function _showComplete() {
     _running = false;
     cancelAnimationFrame(_rafId);
+    _cancelOrbAnim();
 
-    /* reset orb to neutral */
+    /* Reset orb to neutral — instant, no transition needed */
     const orb = document.getElementById('tgOrb');
     if (orb) orb.style.transform = 'scale(1)';
+    _currentScale = ORB_BASE_SCALE;
 
-    const startBtn = document.getElementById('tgStartBtn');
-    const pauseBtn = document.getElementById('tgPauseBtn');
+    const startBtn    = document.getElementById('tgStartBtn');
+    const pauseBtn    = document.getElementById('tgPauseBtn');
     const completeDiv = document.getElementById('tgComplete');
-    if (startBtn) startBtn.style.display = 'none';
-    if (pauseBtn) pauseBtn.style.display = 'none';
+    if (startBtn)    startBtn.style.display    = 'none';
+    if (pauseBtn)    pauseBtn.style.display    = 'none';
     if (completeDiv) completeDiv.style.display = 'block';
 
     const phaseLabel = document.getElementById('tgPhaseLabel');
@@ -268,74 +360,101 @@
   }
 
   function _start() {
-    _cycleCount = 0;
-    _running = true;
-    _paused = false;
-    _phaseIndex = 0;
+    _cycleCount    = 0;
+    _running       = true;
+    _paused        = false;
+    _currentScale  = ORB_BASE_SCALE;
     _updateCycleDots();
 
     const startBtn = document.getElementById('tgStartBtn');
     const pauseBtn = document.getElementById('tgPauseBtn');
-    if (startBtn) { startBtn.disabled = true; startBtn.style.opacity = '.5'; }
+    if (startBtn) { startBtn.disabled = true;  startBtn.style.opacity = '.5'; }
     if (pauseBtn) { pauseBtn.disabled = false; pauseBtn.style.opacity = '1'; }
 
-    _setPhase(0);
+    _setPhase(0, ORB_BASE_SCALE);
     _rafId = requestAnimationFrame(_tick);
   }
 
   function _pause() {
     if (!_running) return;
     const pauseBtn = document.getElementById('tgPauseBtn');
+
     if (!_paused) {
+      /* ── Pausing ── */
       _paused = true;
       cancelAnimationFrame(_rafId);
+
+      /* Accumulate elapsed time before freezing */
       _elapsedAtPause += performance.now() - _phaseStartTs;
-      const orb = document.getElementById('tgOrb');
-      if (orb) orb.style.transform = 'scale(1)';
+
+      /* Freeze the orb at its current rendered position */
+      if (_orbAnim) {
+        try { _orbAnim.pause(); } catch (_) {}
+        /* Read actual rendered scale so resume can continue from here */
+        _currentScale = _readOrbScale();
+      }
+
+      /* Update UI */
       const lbl = document.getElementById('tgPhaseLabel');
+      const cd  = document.getElementById('tgCountdown');
       if (lbl) lbl.textContent = 'Paused';
-      const cd = document.getElementById('tgCountdown');
-      if (cd) cd.textContent = '—';
+      if (cd)  cd.textContent  = '—';
       if (pauseBtn) pauseBtn.textContent = 'Resume';
+
     } else {
+      /* ── Resuming ── */
       _paused = false;
+
+      /* Cancel the frozen orb anim and start a fresh one from current scale
+         covering only the REMAINING duration of this phase */
+      _cancelOrbAnim();
+      const phase     = PHASES[_phaseIndex];
+      const remaining = Math.max(0, phase.durationMs - _elapsedAtPause);
+      _orbAnim = _animateOrb(_currentScale, phase.scale, remaining, phase.easing);
+
+      /* Reset the phase start timestamp to NOW (elapsed is preserved in _elapsedAtPause) */
       _phaseStartTs = performance.now();
-      const phase = PHASES[_phaseIndex];
-      const orb = document.getElementById('tgOrb');
-      if (orb && !_prefersReducedMotion()) orb.style.transform = `scale(${phase.scale})`;
+
+      /* Restore phase label */
       const lbl = document.getElementById('tgPhaseLabel');
       if (lbl) lbl.textContent = phase.label;
       if (pauseBtn) pauseBtn.textContent = 'Pause';
+
       _rafId = requestAnimationFrame(_tick);
     }
   }
 
   function _cleanup() {
     _running = false;
-    _paused = false;
+    _paused  = false;
     cancelAnimationFrame(_rafId);
+    _cancelOrbAnim();
+    _currentScale  = ORB_BASE_SCALE;
+    _elapsedAtPause = 0;
     if (_overlay && _overlay.parentNode) {
       _overlay.parentNode.removeChild(_overlay);
     }
     _overlay = null;
-    _panel = null;
+    _panel   = null;
   }
 
   /* ─── Public API ─── */
   function open(onComplete, onExit) {
-    if (_overlay) return; /* already open */
+    if (_overlay) return; /* already open — prevent duplicates */
 
     _onComplete = typeof onComplete === 'function' ? onComplete : null;
     _onExit     = typeof onExit     === 'function' ? onExit     : null;
-    _cycleCount = 0;
-    _running = false;
-    _paused  = false;
+    _cycleCount    = 0;
+    _running       = false;
+    _paused        = false;
+    _currentScale  = ORB_BASE_SCALE;
+    _elapsedAtPause = 0;
 
     const { overlay, panel } = _buildUI();
     _overlay = overlay;
     _panel   = panel;
 
-    /* wire buttons */
+    /* Wire buttons */
     document.getElementById('tgStartBtn').addEventListener('click', _start);
     document.getElementById('tgPauseBtn').addEventListener('click', _pause);
     document.getElementById('tgExitBtn').addEventListener('click', function () {
@@ -345,6 +464,11 @@
     document.getElementById('tgDoneBtn').addEventListener('click', function () {
       _cleanup();
       if (_onComplete) _onComplete();
+    });
+
+    /* Keyboard: Escape to exit */
+    overlay.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { _cleanup(); if (_onExit) _onExit(); }
     });
   }
 
