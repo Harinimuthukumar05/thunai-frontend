@@ -39,17 +39,27 @@
   let _userId   = 'User';
   let _panel    = null;   // current modal panel element
   let _watering = false;  // prevent double-click on water button
+  let _requestId = 0;
+  let _isLoading = false;
 
   /* ─── Utilities ─── */
   function _apiBase() {
     return window.getApiBase ? window.getApiBase() : 'http://127.0.0.1:8000';
   }
 
+  function _normalizeUserId(value) {
+    return String(value || 'User').trim().replace(/\s+/g, ' ') || 'User';
+  }
+
   function _getUsername() {
     try {
+      if (typeof loadUserSettings === 'function') {
+        const s = loadUserSettings();
+        return _normalizeUserId(s && s.username ? s.username : 'User');
+      }
       const raw = localStorage.getItem('thunai_user_settings');
-      const s   = raw ? JSON.parse(raw) : {};
-      return (s.username || 'User').trim() || 'User';
+      const s = raw ? JSON.parse(raw) : {};
+      return _normalizeUserId(s && s.username ? s.username : 'User');
     } catch (e) { return 'User'; }
   }
 
@@ -286,17 +296,40 @@
 
   /* ─── API calls ─── */
   async function _fetchState() {
-    const res = await fetch(
-      `${_apiBase()}/thulir/${encodeURIComponent(_userId)}`,
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-    if (!res.ok) throw new Error(`GET /thulir failed: ${res.status}`);
-    return res.json();
+    const targetUserId = _normalizeUserId(_userId);
+    const requestId = ++_requestId;
+    _isLoading = true;
+    _renderSidebarWidget();
+
+    try {
+      const res = await fetch(
+        `${_apiBase()}/thulir/${encodeURIComponent(targetUserId)}`,
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      if (!res.ok) throw new Error(`GET /thulir failed: ${res.status}`);
+      const payload = await res.json();
+      if (requestId !== _requestId || _normalizeUserId(_userId) !== targetUserId) return null;
+      _state = payload;
+      _isLoading = false;
+      _renderSidebarWidget();
+      return payload;
+    } catch (e) {
+      if (requestId === _requestId && _normalizeUserId(_userId) === targetUserId) {
+        _state = null;
+      }
+      throw e;
+    } finally {
+      if (requestId === _requestId && _normalizeUserId(_userId) === targetUserId) {
+        _isLoading = false;
+        _renderSidebarWidget();
+      }
+    }
   }
 
   async function _completeActivity(activityType) {
+    const targetUserId = _normalizeUserId(_userId);
     const res = await fetch(
-      `${_apiBase()}/thulir/${encodeURIComponent(_userId)}/complete-activity`,
+      `${_apiBase()}/thulir/${encodeURIComponent(targetUserId)}/complete-activity`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -307,19 +340,24 @@
       const body = await res.json().catch(() => ({}));
       throw new Error(body.detail || `Error ${res.status}`);
     }
-    return res.json();
+    const payload = await res.json();
+    if (_normalizeUserId(_userId) !== targetUserId) return null;
+    return payload;
   }
 
   async function _waterPlant() {
+    const targetUserId = _normalizeUserId(_userId);
     const res = await fetch(
-      `${_apiBase()}/thulir/${encodeURIComponent(_userId)}/water-plant`,
+      `${_apiBase()}/thulir/${encodeURIComponent(targetUserId)}/water-plant`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' } }
     );
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.detail || `Error ${res.status}`);
     }
-    return res.json();
+    const payload = await res.json();
+    if (_normalizeUserId(_userId) !== targetUserId) return null;
+    return payload;
   }
 
   /* ─── Sidebar widget rendering ─── */
@@ -354,6 +392,26 @@
   function _renderSidebarWidget() {
     const container = document.getElementById('thulirSidebarWidget');
     if (!container) return;
+
+    if (_isLoading) {
+      container.innerHTML = `
+        <div style="background:linear-gradient(160deg,#e8f0eb 0%,#ddeae2 100%);padding:16px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:160px;color:var(--text-muted);font-family:'DM Sans',sans-serif;">
+          <div style="font-size:22px;opacity:.75;">🌱</div>
+          <div style="font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;">Loading Thulir…</div>
+        </div>
+      `;
+      return;
+    }
+
+    if (!_state) {
+      container.innerHTML = `
+        <div style="background:linear-gradient(160deg,#eef3ef 0%,#e4ece8 100%);padding:16px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:160px;color:var(--text-muted);font-family:'DM Sans',sans-serif;">
+          <div style="font-size:22px;opacity:.7;">🌿</div>
+          <div style="font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;">Thulir unavailable</div>
+        </div>
+      `;
+      return;
+    }
 
     const svg       = _plantSVG(_state);
     const ageLabel  = _ageLabel(_state);
@@ -651,6 +709,7 @@
 
       try {
         const newState = await _waterPlant();
+        if (!newState) return;
         _state = newState;
 
         /* Re-render sidebar plant (matches new growth stage) */
@@ -814,6 +873,7 @@
   async function _recordCompletion(activityType) {
     try {
       const newState = await _completeActivity(activityType);
+      if (!newState) return;
       _state = newState;
       _renderSidebarWidget();
       _updatePanelActivitiesInPlace(newState);
@@ -963,9 +1023,11 @@
     /* Listen for username changes (user saves settings) */
     window.addEventListener('thunai:usernameChanged', function () {
       const newId = _getUsername();
-      if (newId !== _userId) {
-        _userId = newId;
+      if (_normalizeUserId(newId) !== _normalizeUserId(_userId)) {
+        _userId = _normalizeUserId(newId);
         _state  = null;
+        _requestId += 1;
+        _isLoading = false;
         _init();
       }
     });
@@ -980,8 +1042,8 @@
     } catch (e) {
       console.warn('Thulir: could not load state from backend (offline?)', e);
       _state = null;
+      _renderSidebarWidget();
     }
-    _renderSidebarWidget();
   }
 
   /* ─── Global CSS (injected once) ─── */

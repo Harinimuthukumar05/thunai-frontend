@@ -117,6 +117,7 @@ function saveUserSettings(patch) {
 function updateProfile(profileFields) {
   const updated = saveUserSettings(profileFields);
   if (window.ThunAvatars) window.ThunAvatars.applyBranding();
+  window.dispatchEvent(new CustomEvent('thunai:usernameChanged', { detail: { username: updated.username || 'User' } }));
   return updated;
 }
 
